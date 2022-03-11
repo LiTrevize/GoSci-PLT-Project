@@ -40,37 +40,37 @@ rule token = parse
 | "&&"     { AND }
 | "||"     { OR }
 (* Keywords *)
-| "var" { VAR }
-| "const" { CONST }
-| "struct" { STRUCT }
-| "unit" { UNIT }
-| "variant" { VARIANT }
-| "if"     { IF }
-| "else"   { ELSE }
-| "switch" { SWITCH }
-| "match" { MATCH }
-| "case" { CASE }
-| "while"  { WHILE }
-| "for" { FOR }
-| "continue" { CONTINUE }
-| "break"  { BREAK }
-| "func" { FUNC }
-| "return" { RETURN }
+| "var"       { VAR }
+| "const"     { CONST }
+| "struct"    { STRUCT }
+| "unit"      { UNIT }
+| "variant"   { VARIANT }
+| "if"        { IF }
+| "else"      { ELSE }
+| "switch"    { SWITCH }
+| "match"     { MATCH }
+| "case"      { CASE }
+| "while"     { WHILE }
+| "for"       { FOR }
+| "continue"  { CONTINUE }
+| "break"     { BREAK }
+| "func"      { FUNC }
+| "return"    { RETURN }
 (* Types *)
-| "bool"   { BOOL }
-| "int"    { INT }
-| "float"  { FLOAT }
-| "char"   { CHAR }
-| "string" { STRING }
-| "tensor" { TENSOR }
+| "bool"      { BOOL }
+| "int"       { INT }
+| "float"     { FLOAT }
+| "char"      { CHAR }
+| "string"    { STRING }
+| "tensor"    { TENSOR }
 (* Literals *)
-| "true"   { BLIT(true)  }
-| "false"  { BLIT(false) }
-| digit+ as lem  { ILIT(int_of_string lem) }
-| float_lit as lem { FLIT(float_of_string lem) }
-| '\'' (char_lit? as lem) '\'' { CLIT(lem) }
-| '\"' (char_lit* as lem) '\"' { SLIT(lem) }
-| letter (digit | letter)* as lem { ID(lem) }
+| "true"      { BLIT(true)  }
+| "false"     { BLIT(false) }
+| digit+ as lem                      { ILIT(int_of_string lem) }
+| float_lit as lem                   { FLIT(float_of_string lem) }
+| '\'' (char_lit? as lem) '\''       { CLIT(lem) }
+| '\"' (char_lit* as lem) '\"'       { SLIT(lem) }
+| letter (digit | letter)* as lem    { ID(lem) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 

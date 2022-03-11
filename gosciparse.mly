@@ -85,62 +85,62 @@ tokens:
  | one_token tokens { $1 :: $2 }
 
 one_token:
-  | LPAREN { "(" }
-  | RPAREN { ")" }
-  | LBRACK { "[" }
-  | RBRACK { "]" }
-  | LBRACE { "{" }
-  | RBRACE { "}" }
-  | COLON  { ":" }
-  | SEMI  {  ";" }
-  | COMMA { "," }
-  | DOT   { "." }
+  | LPAREN    { "(" }
+  | RPAREN    { ")" }
+  | LBRACK    { "[" }
+  | RBRACK    { "]" }
+  | LBRACE    { "{" }
+  | RBRACE    { "}" }
+  | COLON     { ":" }
+  | SEMI      {  ";" }
+  | COMMA     { "," }
+  | DOT       { "." }
   /* Operators */
-  | PLUS { "PLUS" }
-  | MINUS { "MINUS" }
-  | MUL { "MUL" }
-  | DIV { "DIV" }
-  | MOD { "MOD" }
-  | POW { "POW" }
-  | MATMUL { "MATMUL" }
-  | INC { "INC" }
-  | DEC { "DEC" }
-  | ASSIGN { "ASSIGN" }
-  | IASSIGN { "IASSIGN" }
-  | EQ { "EQ" }
-  | NEQ { "NEQ" }
-  | LT { "LT" }
-  | NOT { "NOT" }
-  | AND { "AND" }
-  | OR { "OR" }
+  | PLUS     { "PLUS" }
+  | MINUS    { "MINUS" }
+  | MUL      { "MUL" }
+  | DIV      { "DIV" }
+  | MOD      { "MOD" }
+  | POW      { "POW" }
+  | MATMUL   { "MATMUL" }
+  | INC      { "INC" }
+  | DEC      { "DEC" }
+  | ASSIGN   { "ASSIGN" }
+  | IASSIGN  { "IASSIGN" }
+  | EQ       { "EQ" }
+  | NEQ      { "NEQ" }
+  | LT       { "LT" }
+  | NOT      { "NOT" }
+  | AND      { "AND" }
+  | OR       { "OR" }
   /* Keywords */
-  | VAR { "VAR" }
-  | CONST { "CONST" }
-  | STRUCT { "STRUCT" }
-  | UNIT {"UNIT"}
-  | VARIANT {"VARIANT"}
-  | IF { "IF" }
-  | ELSE { "ELSE" }
-  | SWITCH {"SWITCH"}
-  | MATCH {"MATCH"}
-  | CASE {"CASE"}
-  | WHILE { "WHILE" }
-  | FOR {"FOR"}
-  | CONTINUE {"CONTINUE"}
-  | BREAK {"BREAK"}
-  | FUNC {"FUNC"}
-  | RETURN { "RETURN" }
+  | VAR       { "VAR" }
+  | CONST     { "CONST" }
+  | STRUCT    { "STRUCT" }
+  | UNIT      {"UNIT"}
+  | VARIANT   {"VARIANT"}
+  | IF        { "IF" }
+  | ELSE      { "ELSE" }
+  | SWITCH    {"SWITCH"}
+  | MATCH     {"MATCH"}
+  | CASE      {"CASE"}
+  | WHILE     { "WHILE" }
+  | FOR       {"FOR"}
+  | CONTINUE  {"CONTINUE"}
+  | BREAK     {"BREAK"}
+  | FUNC      {"FUNC"}
+  | RETURN    { "RETURN" }
   /* Types */
-  | BOOL { "BOOL" }
-  | INT { "INT" }
-  | FLOAT {"FLOAT"}
-  | CHAR {"CHAR"}
-  | STRING {"STRING"}
-  | TENSOR {"TENSOR"}
+  | BOOL     { "BOOL" }
+  | INT      { "INT" }
+  | FLOAT    {"FLOAT"}
+  | CHAR     {"CHAR"}
+  | STRING   {"STRING"}
+  | TENSOR   {"TENSOR"}
   /* Literals */
-  | BLIT { string_of_bool $1 ^ ":BOOL" }
-  | ILIT { string_of_int $1 ^ ":INT" }
-  | FLIT { string_of_float $1 ^ ":FLOAT" }
-  | CLIT { $1 ^ ":CHAR" }
-  | SLIT { $1 ^ ":STRING" }
-  | ID { $1 ^ ":ID" }
+  | BLIT    { string_of_bool $1 ^ ":BOOL" }
+  | ILIT    { string_of_int $1 ^ ":INT" }
+  | FLIT    { string_of_float $1 ^ ":FLOAT" }
+  | CLIT    { $1 ^ ":CHAR" }
+  | SLIT    { $1 ^ ":STRING" }
+  | ID      { $1 ^ ":ID" }
