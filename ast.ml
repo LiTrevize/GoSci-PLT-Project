@@ -61,3 +61,19 @@ let string_of_program fdecl =
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "\n"
+
+(* for testing *)
+type tokenseq = string list
+
+let string_of_tokenseq l =
+  let rec strn s n = match n with
+  | 0 -> ""
+  | 1 -> s
+  | _ -> s ^ strn s (n-1) in
+  let f t e = match t with
+  | s, i ->
+    if e = "{" then (s ^ e ^ "\n" ^ strn "    " (i+1), i+1)
+    else if e = "}" then (s ^ "\b\b\b\b" ^ strn "    " (i-1) ^ e ^ "\n" ^ strn "\t" (i-1), i-1)
+    else if e = ";" then (s ^  e ^ "\n" ^ strn "    " i, i)
+    else (s ^ e ^ " ", i) in
+  "Scanned program:\babd \n" ^ (fst (List.fold_left f ("",0) l))

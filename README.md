@@ -7,8 +7,14 @@ ocamlbuild test.native
 ```
 
 ### Run the GoSci parser
+Scan only:
 ```
-./test.native
+./test.native scan
+```
+
+Scan then parse
+```
+./test.native parse
 ```
 
 ### Compiler files
@@ -20,4 +26,3 @@ ocamlbuild test.native
 
 - `test.ml`: top-level file to test and run the scanner
 - `example.mc`: a sample GoSci source code
-- `example.out`: a sample parsed code of example.mc
