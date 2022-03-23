@@ -138,9 +138,9 @@ one_token:
   | STRING   {"STRING"}
   | TENSOR   {"TENSOR"}
   /* Literals */
-  | BLIT    { string_of_bool $1 ^ ":BOOL" }
-  | ILIT    { string_of_int $1 ^ ":INT" }
-  | FLIT    { string_of_float $1 ^ ":FLOAT" }
-  | CLIT    { $1 ^ ":CHAR" }
-  | SLIT    { $1 ^ ":STRING" }
-  | ID      { $1 ^ ":ID" }
+  | BLIT    { "BOOL(" ^ string_of_bool $1 ^ ")" }
+  | ILIT    { "INT(" ^ string_of_int $1 ^ ")" }
+  | FLIT    { "FLOAT(" ^ string_of_float $1 ^ ")" }
+  | CLIT    { "CHAR(" ^ $1 ^ ")" }
+  | SLIT    { "STRING(" ^ $1 ^ ")" }
+  | ID      { "ID(" ^ $1 ^ ")" }
