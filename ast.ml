@@ -1,6 +1,6 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type op = Add | Sub | Equal | Neq | Less | And | Or
+type bop = Add | Sub | Equal | Neq | Less | And | Or
 
 type typ = Int | Bool
 
@@ -8,7 +8,7 @@ type expr =
     ILIT of int
   | BoolLit of bool
   | Id of string
-  | Binop of expr * op * expr
+  | Binop of expr * bop * expr
   | Assign of string * expr
   (* function call *)
   | Call of string * expr list

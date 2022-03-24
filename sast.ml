@@ -7,7 +7,7 @@ and sx =
     SILIT of int
   | SBoolLit of bool
   | SId of string
-  | SBinop of sexpr * op * sexpr
+  | SBinop of sexpr * bop * sexpr
   | SAssign of string * sexpr
   (* call *)
   | SCall of string * sexpr list

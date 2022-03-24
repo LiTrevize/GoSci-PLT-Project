@@ -17,6 +17,11 @@ Scan then parse
 ./test.native parse
 ```
 
+Scan, parse, then semantic check
+```
+./test.native scheck
+```
+
 ### Compiler files
 -  `ast.ml`: abstract syntax tree (AST)
 -  `scanner.mll`: scanner

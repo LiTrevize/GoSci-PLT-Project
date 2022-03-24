@@ -93,24 +93,24 @@ let check (globals, functions) =
         in
         (check_assign lt rt err, SAssign(var, (rt, e')))
 
-      | Binop(e1, op, e2) as e ->
+      | Binop(e1, bop, e2) as e ->
         let (t1, e1') = check_expr e1
         and (t2, e2') = check_expr e2 in
         let err = "illegal binary operator " ^
-                  string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
+                  string_of_typ t1 ^ " " ^ string_of_op bop ^ " " ^
                   string_of_typ t2 ^ " in " ^ string_of_expr e
         in
         (* All binary operators require operands of the same type*)
         if t1 = t2 then
           (* Determine expression type based on operator and operand types *)
-          let t = match op with
+          let t = match bop with
               Add | Sub when t1 = Int -> Int
             | Equal | Neq -> Bool
             | Less when t1 = Int -> Bool
             | And | Or when t1 = Bool -> Bool
             | _ -> raise (Failure err)
           in
-          (t, SBinop((t1, e1'), op, (t2, e2')))
+          (t, SBinop((t1, e1'), bop, (t2, e2')))
         else raise (Failure err)
       | Call(fname, args) as call ->
         let fd = find_func fname in

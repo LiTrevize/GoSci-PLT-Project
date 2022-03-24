@@ -2,7 +2,7 @@ open Ast
 open Sast
 
 let _ =
-  if Array.length Sys.argv != 2 then raise (Failure("Must pass one arg to specify the compiler action"))
+  if Array.length Sys.argv != 2 then raise (Failure("Must pass one arg to specify the compiler action: choose from 'scan', 'parse', or 'scheck'"))
   else
     let lexbuf = Lexing.from_channel stdin in
     if Sys.argv.(1) = "scan" then 
@@ -16,4 +16,4 @@ let _ =
       let sprogram = Semant.check program in
       print_endline (string_of_sprogram sprogram)
     else
-      raise (Failure("Invalid action: choose from 'scan' or 'parse'"))
+      raise (Failure("Invalid action: choose from 'scan', 'parse', or 'scheck'"))
