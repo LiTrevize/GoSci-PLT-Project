@@ -10,7 +10,7 @@ module StringMap = Map.Make(String)
 
    Check each global variable, then check each function *)
 
-let check (globals, functions) =
+let check (globals, units, functions) =
 
   (* Verify a list of bindings has no duplicate names *)
   let check_binds (kind : string) (binds : (typ * string) list) =
@@ -23,7 +23,21 @@ let check (globals, functions) =
   in
 
   (* Make sure no globals duplicate *)
-  check_binds "global" globals;
+  let _ = check_binds "global" globals in
+
+  (* Create global variable symbol table *)
+  let global_vars = List.fold_left (fun m (ty, name) -> StringMap.add name ty m) StringMap.empty globals in
+
+  let type_of_identifier s m =
+    try StringMap.find s m
+    with Not_found -> raise (Failure ("undeclared identifier " ^ s))
+  in
+
+  (* Raise an exception if the given rvalue type cannot be assigned to
+       the given lvalue type *)
+  let check_assign lvaluet rvaluet err =
+    if lvaluet = rvaluet then lvaluet else raise (Failure err)
+  in
 
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls =
@@ -63,11 +77,6 @@ let check (globals, functions) =
     check_binds "formal" func.formals;
     check_binds "local" func.locals;
 
-    (* Raise an exception if the given rvalue type cannot be assigned to
-       the given lvalue type *)
-    let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
-    in
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
@@ -75,10 +84,7 @@ let check (globals, functions) =
     in
 
     (* Return a variable from our local symbol table *)
-    let type_of_identifier s =
-      try StringMap.find s symbols
-      with Not_found -> raise (Failure ("undeclared identifier " ^ s))
-    in
+    
 
     (* Return a semantically-checked expression, i.e., with a type *)
     let rec check_expr = function
@@ -87,9 +93,9 @@ let check (globals, functions) =
       | FloatLit l -> (Float, SFloatLit l)
       | CharLit l -> (Char, SCharLit l)
       | StrLit l -> (Str, SStrLit l)
-      | Id var -> (type_of_identifier var, SId var)
+      | Id var -> (type_of_identifier var symbols, SId var)
       | Assign(var, e) as ex ->
-        let lt = type_of_identifier var
+        let lt = type_of_identifier var symbols
         and (rt, e') = check_expr e in
         let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
                   string_of_typ rt ^ " in " ^ string_of_expr ex
@@ -166,4 +172,52 @@ let check (globals, functions) =
       sbody = check_stmt_list func.body
     }
   in
-  (globals, List.map check_func functions)
+    let check_unit unt =
+      let rec check_num_expr = function
+        IntLit l -> (Int, SIntLit l)
+      | BoolLit l -> (Bool, SBoolLit l)
+      | FloatLit l -> (Float, SFloatLit l)
+      | CharLit l -> (Char, SCharLit l)
+      | StrLit l -> (Str, SStrLit l)
+      | Id var -> (type_of_identifier var global_vars, SId var)
+      | Binop(e1, bop, e2) as e ->
+        let (t1, e1') = check_num_expr e1
+        and (t2, e2') = check_num_expr e2 in
+        let err = "illegal binary operator " ^
+                  string_of_typ t1 ^ " " ^ string_of_bop bop ^ " " ^
+                  string_of_typ t2 ^ " in " ^ string_of_expr e
+        in
+        (* All binary operators require operands of the same type*)
+        if t1 = t2 then
+          (* Determine expression type based on operator and operand types *)
+          let t = match bop with
+              Add | Sub when t1 = Int -> Int
+            | Equal | Neq -> Bool
+            | Less when t1 = Int -> Bool
+            | And | Or when t1 = Bool -> Bool
+            | _ -> raise (Failure err)
+          in
+          (t, SBinop((t1, e1'), bop, (t2, e2')))
+        else raise (Failure err)
+      | Call(fname, args) as call ->
+        let fd = find_func fname in
+        let param_length = List.length fd.formals in
+        if List.length args != param_length then
+          raise (Failure ("expecting " ^ string_of_int param_length ^
+                          " arguments in " ^ string_of_expr call))
+        else let check_call (ft, _) e =
+               let (et, e') = check_num_expr e in
+               let err = "illegal argument found " ^ string_of_typ et ^
+                         " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
+               in (check_assign ft et err, e')
+          in
+          let args' = List.map2 check_call fd.formals args
+          in (fd.rtyp, SCall(fname, args'))
+      | _ as l -> raise (Failure ("Invalid operation: " ^ (string_of_expr l)))
+    in
+      match unt.prop with
+      | BaseUnit -> {suname=unt.uname; sprop=SBaseUnit}
+      | AUnit l -> {suname=unt.uname; sprop=SAUnit l}
+      | CUnit (e, id) -> {suname=unt.uname; sprop=SCUnit(check_num_expr e, id)}
+  in
+  (globals, List.map check_unit units, List.map check_func functions)

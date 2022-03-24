@@ -3,12 +3,27 @@
 int a;
 int b;
 
+unit U {}
+
+unit km {
+  1000 m
+}
+
+unit L {
+  m | km
+}
+
 int gcd(int a, int b) {
   while (a != b) {
     if (b < a) a = a - b;
     else b = b - a;
   }
   return a;
+}
+
+int max(int a, int b) {
+  if (a < b) return b;
+  else return a;
 }
 
 int main() {

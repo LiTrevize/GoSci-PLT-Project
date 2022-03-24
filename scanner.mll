@@ -21,6 +21,7 @@ rule token = parse
 | ';'      { SEMI }
 | ','      { COMMA }
 | '.'      { DOT }
+| '|'      { VERBAR }
 (* Operators *)
 | '+'      { PLUS }
 | '-'      { MINUS }

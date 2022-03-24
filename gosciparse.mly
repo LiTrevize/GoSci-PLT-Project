@@ -4,7 +4,7 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE COLON DOT
+%token SEMI LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE COLON DOT VERBAR
 %token PLUS MINUS MUL DIV MOD POW MATMUL INC DEC ASSIGN IASSIGN
 %token EQ NEQ LT NOT AND OR
 %token VAR CONST STRUCT UNIT VARIANT IF ELSE SWITCH MATCH CASE WHILE FOR CONTINUE BREAK FUNC
@@ -38,9 +38,10 @@ program:
   decls EOF { $1}
 
 decls:
-   /* nothing */ { ([], [])               }
- | vdecl SEMI decls { (($1 :: fst $3), snd $3) }
- | fdecl decls { (fst $2, ($1 :: snd $2)) }
+   /* nothing */    { ([], [], [])               }
+ | vdecl SEMI decls { match $3 with (v, u, f) -> (($1 :: v), u, f) }
+ | udecl decls      { match $2 with (v, u, f) -> (v, ($1 :: u), f) }
+ | fdecl decls      { match $2 with (v, u, f) -> (v, u, ($1 :: f)) }
 
 vdecl_list:
   /*nothing*/ { [] }
@@ -56,6 +57,21 @@ typ:
   | FLOAT  { Float  }
   | CHAR   { Char   }
   | STRING { Str }
+
+ids_opt:
+  /*nothing*/ { BaseUnit }
+  | id_list   { $1 }
+
+id_list:
+    ID                  { AUnit([$1]) }
+  | ID VERBAR id_list   { match $3 with AUnit v -> AUnit($1 :: v) | _ -> raise (Failure "Unit args mismatch") }
+
+udecl_args:
+    expr ID { CUnit($1, $2) }
+  | ids_opt { $1 }
+
+udecl:
+    UNIT ID LBRACE udecl_args RBRACE { { uname=$2; prop=$4 } }
 
 /* fdecl */
 fdecl:

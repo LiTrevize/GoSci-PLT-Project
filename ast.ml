@@ -16,6 +16,18 @@ type expr =
   (* function call *)
   | Call of string * expr list
 
+type unit_prop =
+    BaseUnit
+  (* Concrete Unit *)
+  | CUnit of expr * string
+  (* Abstract Unit *)
+  | AUnit of string list
+
+type unit_def = {
+  uname: string;
+  prop: unit_prop
+}
+
 type stmt =
     Block of stmt list
   | Expr of expr
@@ -36,7 +48,7 @@ type func_def = {
   body: stmt list;
 }
 
-type program = bind list * func_def list
+type program = bind list * unit_def list * func_def list
 
 (* Pretty-printing functions *)
 let string_of_bop = function
@@ -88,9 +100,18 @@ let string_of_fdecl fdecl =
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_program (vars, funcs) =
+let string_of_udecl udecl =
+  "unit " ^ udecl.uname ^ " {\n" ^
+  (match udecl.prop with
+  | BaseUnit -> ""
+  | CUnit (e, id) -> (string_of_expr e) ^ " " ^ id ^ "\n"
+  | AUnit ids -> String.concat " | " ids ^ "\n")
+  ^ "}\n"
+
+let string_of_program (vars, units, funcs) =
   "\n\nParsed program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
+  String.concat "\n" (List.map string_of_udecl units) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funcs)
 
 

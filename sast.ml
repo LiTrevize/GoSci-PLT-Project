@@ -23,6 +23,18 @@ type sstmt =
   (* return *)
   | SReturn of sexpr
 
+type sunit_prop =
+    SBaseUnit
+  (* Concrete Unit *)
+  | SCUnit of sexpr * string
+  (* Abstract Unit *)
+  | SAUnit of string list
+
+type sunit_def = {
+  suname: string;
+  sprop: sunit_prop
+}
+
 (* func_def: ret_typ fname formals locals body *)
 type sfunc_def = {
   srtyp: typ;
@@ -70,7 +82,16 @@ let string_of_sfdecl fdecl =
   String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
   "}\n"
 
-let string_of_sprogram (vars, funcs) =
+let string_of_sudecl udecl =
+  "unit " ^ udecl.suname ^ " {\n" ^
+  (match udecl.sprop with
+  | SBaseUnit -> ""
+  | SCUnit (e, id) -> (string_of_sexpr e) ^ " " ^ id ^ "\n"
+  | SAUnit ids -> String.concat " | " ids ^ "\n")
+  ^ "}\n"
+
+let string_of_sprogram (vars, units, funcs) =
   "\n\nSementically checked program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
+  String.concat "" (List.map string_of_sudecl units) ^ "\n" ^
   String.concat "\n" (List.map string_of_sfdecl funcs)
