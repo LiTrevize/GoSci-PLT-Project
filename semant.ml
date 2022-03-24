@@ -82,8 +82,11 @@ let check (globals, functions) =
 
     (* Return a semantically-checked expression, i.e., with a type *)
     let rec check_expr = function
-        ILIT l -> (Int, SILIT l)
+        IntLit l -> (Int, SIntLit l)
       | BoolLit l -> (Bool, SBoolLit l)
+      | FloatLit l -> (Float, SFloatLit l)
+      | CharLit l -> (Char, SCharLit l)
+      | StrLit l -> (Str, SStrLit l)
       | Id var -> (type_of_identifier var, SId var)
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var
@@ -97,7 +100,7 @@ let check (globals, functions) =
         let (t1, e1') = check_expr e1
         and (t2, e2') = check_expr e2 in
         let err = "illegal binary operator " ^
-                  string_of_typ t1 ^ " " ^ string_of_op bop ^ " " ^
+                  string_of_typ t1 ^ " " ^ string_of_bop bop ^ " " ^
                   string_of_typ t2 ^ " in " ^ string_of_expr e
         in
         (* All binary operators require operands of the same type*)

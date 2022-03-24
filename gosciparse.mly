@@ -13,7 +13,7 @@ open Ast
 %token <bool> BLIT
 %token <int> ILIT
 %token <float> FLIT
-%token <string> CLIT
+%token <char> CLIT
 %token <string> SLIT
 %token <string> ID
 %token EOF
@@ -51,8 +51,11 @@ vdecl:
   typ ID { ($1, $2) }
 
 typ:
-    INT   { Int   }
-  | BOOL  { Bool  }
+    INT    { Int    }
+  | BOOL   { Bool   }
+  | FLOAT  { Float  }
+  | CHAR   { Char   }
+  | STRING { Str }
 
 /* fdecl */
 fdecl:
@@ -91,8 +94,11 @@ stmt:
   | RETURN expr SEMI                        { Return $2      }
 
 expr:
-    ILIT          { ILIT($1)            }
+    ILIT             { IntLit($1)             }
   | BLIT             { BoolLit($1)            }
+  | FLIT             { FloatLit($1)           }
+  | CLIT             { CharLit($1)            }
+  | SLIT             { StrLit($1)             }
   | ID               { Id($1)                 }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
@@ -183,6 +189,6 @@ one_token:
   | BLIT    { "BOOL(" ^ string_of_bool $1 ^ ")" }
   | ILIT    { "INT(" ^ string_of_int $1 ^ ")" }
   | FLIT    { "FLOAT(" ^ string_of_float $1 ^ ")" }
-  | CLIT    { "CHAR(" ^ $1 ^ ")" }
+  | CLIT    { "CHAR(" ^ String.make 1 $1 ^ ")" }
   | SLIT    { "STRING(" ^ $1 ^ ")" }
   | ID      { "ID(" ^ $1 ^ ")" }

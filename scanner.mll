@@ -68,7 +68,7 @@ rule token = parse
 | "false"     { BLIT(false) }
 | digit+ as lem                      { ILIT(int_of_string lem) }
 | float_lit as lem                   { FLIT(float_of_string lem) }
-| '\'' (char_lit? as lem) '\''       { CLIT(lem) }
+| '\'' (char_lit? as lem) '\''       { CLIT(lem.[0]) }
 | '\"' (char_lit* as lem) '\"'       { SLIT(lem) }
 | letter (digit | letter)* as lem    { ID(lem) }
 | eof { EOF }

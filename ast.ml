@@ -2,11 +2,14 @@
 
 type bop = Add | Sub | Equal | Neq | Less | And | Or
 
-type typ = Int | Bool
+type typ = Int | Bool | Float | Char | Str
 
 type expr =
-    ILIT of int
+    IntLit of int
   | BoolLit of bool
+  | FloatLit of float
+  | CharLit of char
+  | StrLit of string
   | Id of string
   | Binop of expr * bop * expr
   | Assign of string * expr
@@ -36,7 +39,7 @@ type func_def = {
 type program = bind list * func_def list
 
 (* Pretty-printing functions *)
-let string_of_op = function
+let string_of_bop = function
     Add -> "+"
   | Sub -> "-"
   | Equal -> "=="
@@ -46,12 +49,15 @@ let string_of_op = function
   | Or -> "||"
 
 let rec string_of_expr = function
-    ILIT(l) -> string_of_int l
+    IntLit(l) -> string_of_int l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
+  | FloatLit(l) -> string_of_float l
+  | CharLit(l) -> String.make 1 l
+  | StrLit(l) -> l
   | Id(s) -> s
   | Binop(e1, o, e2) ->
-    string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
+    string_of_expr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
@@ -68,6 +74,9 @@ let rec string_of_stmt = function
 let string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
+  | Float -> "float"
+  | Char -> "char"
+  | Str -> "string"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
