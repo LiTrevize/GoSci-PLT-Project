@@ -7,7 +7,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE COLON DOT VERBAR
 %token PLUS MINUS MUL DIV MOD POW MATMUL INC DEC ASSIGN IASSIGN
 %token EQ NEQ LT NOT AND OR
-%token VAR CONST STRUCT UNIT VARIANT IF ELSE SWITCH MATCH CASE WHILE FOR CONTINUE BREAK FUNC
+%token VAR CONST STRUCT UNIT VARTYPE IF ELSE SWITCH MATCH CASE WHILE FOR CONTINUE BREAK FUNC
 %token BOOL INT FLOAT CHAR STRING TENSOR
 %token RETURN COMMA
 %token <bool> BLIT
@@ -159,6 +159,7 @@ one_token:
   | SEMI      {  ";" }
   | COMMA     { "," }
   | DOT       { "." }
+  | VERBAR    { "|" }
   /* Operators */
   | PLUS     { "PLUS" }
   | MINUS    { "MINUS" }
@@ -182,7 +183,7 @@ one_token:
   | CONST     { "CONST" }
   | STRUCT    { "STRUCT" }
   | UNIT      {"UNIT"}
-  | VARIANT   {"VARIANT"}
+  | VARTYPE   {"VARTYPE"}
   | IF        { "IF" }
   | ELSE      { "ELSE" }
   | SWITCH    {"SWITCH"}

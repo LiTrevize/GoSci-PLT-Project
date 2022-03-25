@@ -119,6 +119,14 @@ let string_of_program (vars, units, funcs) =
 type tokenseq = string list
 
 let string_of_tokenseq l =
+  let f s e = match e with
+  | ";" -> s ^ ";\n"
+  | "{" -> s ^ "{\n"
+  | "}" -> s ^ "}\n"
+  | _ -> s ^ e ^ " " in
+  "Scanned program:\n" ^ (List.fold_left f "" l)
+
+(* let string_of_tokenseq l =
   let rec strn s n = match n with
   | 0 -> ""
   | 1 -> s
@@ -129,4 +137,4 @@ let string_of_tokenseq l =
     else if e = "}" then (s ^ "\b\b\b\b" ^ strn "    " (i-1) ^ e ^ "\n" ^ strn "\t" (i-1), i-1)
     else if e = ";" then (s ^  e ^ "\n" ^ strn "    " i, i)
     else (s ^ e ^ " ", i) in
-  "Scanned program:\n" ^ (fst (List.fold_left f ("",0) l))
+  "Scanned program:\n" ^ (fst (List.fold_left f ("",0) l)) *)

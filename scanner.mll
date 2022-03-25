@@ -45,7 +45,7 @@ rule token = parse
 | "const"     { CONST }
 | "struct"    { STRUCT }
 | "unit"      { UNIT }
-| "variant"   { VARIANT }
+| "vartype"   { VARTYPE }
 | "if"        { IF }
 | "else"      { ELSE }
 | "switch"    { SWITCH }
