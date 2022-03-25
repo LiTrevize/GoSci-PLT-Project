@@ -1,25 +1,42 @@
 # GoSci-PLT-Project
 
-### Build the GoSci parser
+### Test the GoSci compiler
+Install ounit2 package:
+```
+opam install ounit2
+```
+
+Build test code:
+```
+ocamlbuild -use-ocamlfind -pkgs ounit2 test.native
+```
+
+Run all test cases:
+```
+./test.native
+```
+
+### Build the GoSci compiler
 
 ```
-ocamlbuild test.native
+ocamlbuild main.native
 ```
 
-### Run the GoSci parser
+### Run the GoSci compiler
+
 Scan only:
 ```
-./test.native scan
+./main.native scan
 ```
 
 Scan then parse
 ```
-./test.native parse
+./main.native parse
 ```
 
 Scan, parse, then semantic check
 ```
-./test.native scheck
+./main.native scheck
 ```
 
 ### Compiler files
@@ -29,5 +46,6 @@ Scan, parse, then semantic check
 
 ### Other files
 
-- `test.ml`: top-level file to test and run the scanner
+- `main.ml`: top-level file to test and run the compiler
 - `example.mc`: a sample GoSci source code
+- `test.ml`: all test cases
