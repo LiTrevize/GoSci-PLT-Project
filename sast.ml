@@ -35,6 +35,8 @@ type sunit_def = {
   sprop: sunit_prop
 }
 
+type svtype_def = string * typ list
+
 (* func_def: ret_typ fname formals locals body *)
 type sfunc_def = {
   srtyp: typ;
@@ -44,7 +46,7 @@ type sfunc_def = {
   sbody: sstmt list;
 }
 
-type sprogram = bind list * sfunc_def list
+type sprogram = bind list * sunit_def list * svtype_def list * sfunc_def list
 
 
 
@@ -90,8 +92,9 @@ let string_of_sudecl udecl =
   | SAUnit ids -> String.concat " | " ids ^ "\n")
   ^ "}\n"
 
-let string_of_sprogram (vars, units, funcs) =
+let string_of_sprogram (vars, units, vtypes, funcs) =
   "\n\nSementically checked program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "" (List.map string_of_sudecl units) ^ "\n" ^
+  String.concat "\n" (List.map string_of_sudecl units) ^ "\n" ^
+  String.concat "\n" (List.map string_of_vtype vtypes) ^ "\n" ^
   String.concat "\n" (List.map string_of_sfdecl funcs)

@@ -10,7 +10,7 @@ module StringMap = Map.Make(String)
 
    Check each global variable, then check each function *)
 
-let check (globals, units, functions) =
+let check (globals, units, vtypes, functions) =
 
   (* Verify a list of bindings has no duplicate names *)
   let check_binds (kind : string) (binds : (typ * string) list) =
@@ -220,4 +220,4 @@ let check (globals, units, functions) =
       | AUnit l -> {suname=unt.uname; sprop=SAUnit l}
       | CUnit (e, id) -> {suname=unt.uname; sprop=SCUnit(check_num_expr e, id)}
   in
-  (globals, List.map check_unit units, List.map check_func functions)
+  (globals, List.map check_unit units, vtypes, List.map check_func functions)

@@ -38,10 +38,11 @@ program:
   decls EOF { $1}
 
 decls:
-   /* nothing */    { ([], [], [])               }
- | vdecl SEMI decls { match $3 with (v, u, f) -> (($1 :: v), u, f) }
- | udecl decls      { match $2 with (v, u, f) -> (v, ($1 :: u), f) }
- | fdecl decls      { match $2 with (v, u, f) -> (v, u, ($1 :: f)) }
+   /* nothing */    { ([], [], [], [])               }
+ | vdecl SEMI decls { match $3 with (v, u, vt, f) -> (($1 :: v), u, vt, f) }
+ | udecl decls      { match $2 with (v, u, vt, f) -> (v, ($1 :: u), vt, f) }
+ | vtdecl decls     { match $2 with (v, u, vt, f) -> (v, u, ($1 :: vt), f) }
+ | fdecl decls      { match $2 with (v, u, vt, f) -> (v, u, vt, ($1 :: f)) }
 
 vdecl_list:
   /*nothing*/ { [] }
@@ -58,20 +59,27 @@ typ:
   | CHAR   { Char   }
   | STRING { Str }
 
-ids_opt:
+units_opt:
   /*nothing*/ { BaseUnit }
-  | id_list   { $1 }
+  | unit_list   { $1 }
 
-id_list:
+unit_list:
     ID                  { AUnit([$1]) }
-  | ID VERBAR id_list   { match $3 with AUnit v -> AUnit($1 :: v) | _ -> raise (Failure "Unit args mismatch") }
+  | ID VERBAR unit_list   { match $3 with AUnit v -> AUnit($1 :: v) | _ -> raise (Failure "Unit args mismatch") }
 
 udecl_args:
     expr ID { CUnit($1, $2) }
-  | ids_opt { $1 }
+  | units_opt { $1 }
 
 udecl:
     UNIT ID LBRACE udecl_args RBRACE { { uname=$2; prop=$4 } }
+
+type_list:
+    typ  { [$1] }
+  | typ VERBAR type_list  { $1 :: $3 }
+
+vtdecl:
+    VARTYPE ID LBRACE type_list RBRACE  { ($2, $4) }
 
 /* fdecl */
 fdecl:

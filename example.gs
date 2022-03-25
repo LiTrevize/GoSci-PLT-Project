@@ -13,6 +13,10 @@ unit L {
   m | km
 }
 
+vartype Num {
+  int | float
+}
+
 int gcd(int a, int b) {
   while (a != b) {
     if (b < a) a = a - b;

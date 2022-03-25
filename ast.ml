@@ -28,6 +28,8 @@ type unit_def = {
   prop: unit_prop
 }
 
+type vtype_def = string * typ list
+
 type stmt =
     Block of stmt list
   | Expr of expr
@@ -48,7 +50,7 @@ type func_def = {
   body: stmt list;
 }
 
-type program = bind list * unit_def list * func_def list
+type program = bind list * unit_def list * vtype_def list * func_def list
 
 (* Pretty-printing functions *)
 let string_of_bop = function
@@ -108,10 +110,14 @@ let string_of_udecl udecl =
   | AUnit ids -> String.concat " | " ids ^ "\n")
   ^ "}\n"
 
-let string_of_program (vars, units, funcs) =
+let string_of_vtype vtype = 
+  "vartype " ^ (fst vtype) ^ " {\n" ^ String.concat " | " (List.map string_of_typ (snd vtype)) ^ "\n}\n"
+
+let string_of_program (vars, units, vtypes, funcs) =
   "\n\nParsed program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_udecl units) ^ "\n" ^
+  String.concat "\n" (List.map string_of_vtype vtypes) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funcs)
 
 
