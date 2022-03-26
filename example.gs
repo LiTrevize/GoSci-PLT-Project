@@ -1,7 +1,7 @@
 /* The GCD algorithm in NanoC */
 /* TODO: change to GoSci */
 int a;
-int b;
+int b [m][s -2];
 
 unit U {}
 
@@ -33,7 +33,7 @@ int max(int a, int b) {
 int main() {
   int x;
   int y;
-  float z;
+  float z [t];
   char c;
   string s;
   a = 18;

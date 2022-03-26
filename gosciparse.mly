@@ -50,7 +50,7 @@ vdecl_list:
 
 /* int x */
 vdecl:
-  typ ID { ($1, $2) }
+  typ ID unit_expr_opt { ($1, $2, $3) }
 
 typ:
     INT    { Int    }
@@ -58,6 +58,12 @@ typ:
   | FLOAT  { Float  }
   | CHAR   { Char   }
   | STRING { Str }
+
+unit_expr_opt:
+  /*nothing*/                                  { [] }
+  | LBRACK ID RBRACK unit_expr_opt             { ($2, 1) :: $4 }
+  | LBRACK ID ILIT RBRACK unit_expr_opt        { ($2, $3) :: $5 }
+  | LBRACK ID MINUS ILIT RBRACK unit_expr_opt  { ($2, - $4) :: $6 }
 
 units_opt:
   /*nothing*/ { BaseUnit }
@@ -86,8 +92,8 @@ fdecl:
   vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
   {
     {
-      rtyp=fst $1;
-      fname=snd $1;
+      rtyp=(match $1 with (t, i, u) -> t);
+      fname=(match $1 with (t, i, u) -> i);
       formals=$3;
       locals=$6;
       body=$7

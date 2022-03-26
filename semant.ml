@@ -13,23 +13,28 @@ module StringMap = Map.Make(String)
 let check (globals, units, vtypes, functions) =
 
   (* Verify a list of bindings has no duplicate names *)
-  let check_binds (kind : string) (binds : (typ * string) list) =
+  let check_binds (kind : string) (binds : (typ * string * unit_expr) list) =
     let rec dups = function
         [] -> ()
-      |	((_,n1) :: (_,n2) :: _) when n1 = n2 ->
+      |	((_,n1,_) :: (_,n2,_) :: _) when n1 = n2 ->
         raise (Failure ("duplicate " ^ kind ^ " " ^ n1))
       | _ :: t -> dups t
-    in dups (List.sort (fun (_,a) (_,b) -> compare a b) binds)
+    in dups (List.sort (fun (_,a,_) (_,b,_) -> compare a b) binds)
   in
 
   (* Make sure no globals duplicate *)
   let _ = check_binds "global" globals in
 
   (* Create global variable symbol table *)
-  let global_vars = List.fold_left (fun m (ty, name) -> StringMap.add name ty m) StringMap.empty globals in
+  let global_vars = List.fold_left (fun m (ty, name, uexpr) -> StringMap.add name (ty,uexpr) m) StringMap.empty globals in
 
   let type_of_identifier s m =
-    try StringMap.find s m
+    try fst (StringMap.find s m)
+    with Not_found -> raise (Failure ("undeclared identifier " ^ s))
+  in
+
+  let unit_of_identifier s m =
+    try snd (StringMap.find s m)
     with Not_found -> raise (Failure ("undeclared identifier " ^ s))
   in
 
@@ -44,7 +49,7 @@ let check (globals, units, vtypes, functions) =
     StringMap.add "print" {
       rtyp = Int;
       fname = "print";
-      formals = [(Int, "x")];
+      formals = [(Int, "x", [])];
       locals = []; body = [] } StringMap.empty
   in
 
@@ -79,7 +84,7 @@ let check (globals, units, vtypes, functions) =
 
 
     (* Build local symbol table of variables for this function *)
-    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+    let symbols = List.fold_left (fun m (ty, name, uexpr) -> StringMap.add name (ty, uexpr) m)
         StringMap.empty (globals @ func.formals @ func.locals )
     in
 
@@ -127,7 +132,7 @@ let check (globals, units, vtypes, functions) =
         if List.length args != param_length then
           raise (Failure ("expecting " ^ string_of_int param_length ^
                           " arguments in " ^ string_of_expr call))
-        else let check_call (ft, _) e =
+        else let check_call (ft, _, _) e =
                let (et, e') = check_expr e in
                let err = "illegal argument found " ^ string_of_typ et ^
                          " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
@@ -205,7 +210,7 @@ let check (globals, units, vtypes, functions) =
         if List.length args != param_length then
           raise (Failure ("expecting " ^ string_of_int param_length ^
                           " arguments in " ^ string_of_expr call))
-        else let check_call (ft, _) e =
+        else let check_call (ft, _, _) e =
                let (et, e') = check_num_expr e in
                let err = "illegal argument found " ^ string_of_typ et ^
                          " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e

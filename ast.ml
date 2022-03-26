@@ -26,6 +26,14 @@ type unit_prop =
 (* unit_def: (name, unit_prop) *)
 type unit_def = string * unit_prop
 
+(*
+  unit term: (unit_name, power)
+  e.g. [m -2]
+*)
+type unit_term = string * int
+
+type unit_expr = unit_term list
+
 type vtype_def = string * typ list
 
 type stmt =
@@ -36,8 +44,8 @@ type stmt =
   (* return *)
   | Return of expr
 
-(* int x: name binding *)
-type bind = typ * string
+(* int x [m][s -2]: name binding *)
+type bind = typ * string * unit_expr
 
 (* func_def: ret_typ fname formals locals body *)
 type func_def = {
@@ -48,6 +56,7 @@ type func_def = {
   body: stmt list;
 }
 
+(* program = (globals, units, vartypes, functions) *)
 type program = bind list * unit_def list * vtype_def list * func_def list
 
 (* Pretty-printing functions *)
@@ -90,11 +99,17 @@ let string_of_typ = function
   | Char -> "char"
   | Str -> "string"
 
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_unit_term (name, exp) = "[" ^ name ^ " " ^ string_of_int exp ^ "]"
+
+let string_of_bind (t, id, units) =
+  string_of_typ t ^ " " ^ id ^ " " ^ String.concat "" (List.map string_of_unit_term units)
+
+let string_of_vdecl bnd =
+  string_of_bind bnd ^ ";\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.rtyp ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.formals) ^
   ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
