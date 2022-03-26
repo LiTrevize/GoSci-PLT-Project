@@ -10,7 +10,7 @@ module StringMap = Map.Make(String)
 
    Check each global variable, then check each function *)
 
-let check (globals, units, vtypes, functions) =
+let check ((globals, units, vtypes, functions):program) =
 
   (* Verify a list of bindings has no duplicate names *)
   let check_binds (kind : string) (binds : (typ * string * unit_expr) list) =

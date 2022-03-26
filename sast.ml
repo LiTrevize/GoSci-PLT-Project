@@ -48,7 +48,7 @@ type sprogram = bind list * sunit_def list * svtype_def list * sfunc_def list
 
 
 (* Pretty-printing functions *)
-let rec string_of_sexpr ((t, u), e) =
+let rec string_of_sexpr (((t, u), e):sexpr) =
   "(" ^ string_of_typ t ^ string_of_unit_expr u ^ " : " ^ (match e with
         SIntLit(l) -> string_of_int l
       | SBoolLit(true) -> "true"
@@ -73,7 +73,7 @@ let rec string_of_sstmt = function
                        string_of_sstmt s1 ^ "else\n" ^ string_of_sstmt s2
   | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
 
-let string_of_sfdecl fdecl =
+let string_of_sfdecl (fdecl:sfunc_def) =
   string_of_rtyp fdecl.srtyp ^ " " ^
   fdecl.sfname ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.sformals) ^
   ")\n{\n" ^
@@ -81,7 +81,7 @@ let string_of_sfdecl fdecl =
   String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
   "}\n"
 
-let string_of_sudecl udecl =
+let string_of_sudecl (udecl:sunit_def) =
   "unit " ^ fst udecl ^ " {\n" ^
   (match snd udecl with
   | SBaseUnit -> ""
@@ -89,7 +89,7 @@ let string_of_sudecl udecl =
   | SAUnit ids -> String.concat " | " ids ^ "\n")
   ^ "}\n"
 
-let string_of_sprogram (vars, units, vtypes, funcs) =
+let string_of_sprogram ((vars, units, vtypes, funcs):sprogram) =
   "\n\nSementically checked program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_sudecl units) ^ "\n" ^

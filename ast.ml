@@ -104,15 +104,15 @@ let string_of_typ = function
   | Char -> "char"
   | Str -> "string"
 
-let string_of_bind (t, id, units) =
+let string_of_bind ((t, id, units):bind) =
   string_of_typ t ^ " " ^ id ^ " " ^ String.concat "" (List.map string_of_unit_term units)
 
-let string_of_vdecl bnd =
+let string_of_vdecl (bnd:bind) =
   string_of_bind bnd ^ ";\n"
 
-let string_of_rtyp rtyp = string_of_typ (fst rtyp) ^ " " ^ string_of_unit_expr (snd rtyp)
+let string_of_rtyp (rtyp:typ*unit_expr) = string_of_typ (fst rtyp) ^ " " ^ string_of_unit_expr (snd rtyp)
 
-let string_of_fdecl fdecl =
+let string_of_fdecl (fdecl:func_def) =
   string_of_rtyp fdecl.rtyp ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.formals) ^
   ")\n{\n" ^
@@ -120,7 +120,7 @@ let string_of_fdecl fdecl =
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_udecl udecl =
+let string_of_udecl (udecl:unit_def) =
   "unit " ^ fst udecl ^ " {\n" ^
   (match snd udecl with
   | BaseUnit -> ""
@@ -128,10 +128,10 @@ let string_of_udecl udecl =
   | AUnit ids -> String.concat " | " ids ^ "\n")
   ^ "}\n"
 
-let string_of_vtype vtype = 
+let string_of_vtype (vtype:vtype_def) = 
   "vartype " ^ (fst vtype) ^ " {\n" ^ String.concat " | " (List.map string_of_typ (snd vtype)) ^ "\n}\n"
 
-let string_of_program (vars, units, vtypes, funcs) =
+let string_of_program ((vars, units, vtypes, funcs):program) =
   "\n\nParsed program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_udecl units) ^ "\n" ^
