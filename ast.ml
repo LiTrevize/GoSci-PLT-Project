@@ -4,10 +4,18 @@ type bop = Add | Sub | Equal | Neq | Less | And | Or
 
 type typ = Int | Bool | Float | Char | Str
 
+(*
+  unit term: (unit_name, power)
+  e.g. [m -2]
+*)
+type unit_term = string * int
+
+type unit_expr = unit_term list
+
 type expr =
-    IntLit of int
+    IntLit of int * unit_expr
   | BoolLit of bool
-  | FloatLit of float
+  | FloatLit of float * unit_expr
   | CharLit of char
   | StrLit of string
   | Id of string
@@ -25,14 +33,6 @@ type unit_prop =
 
 (* unit_def: (name, unit_prop) *)
 type unit_def = string * unit_prop
-
-(*
-  unit term: (unit_name, power)
-  e.g. [m -2]
-*)
-type unit_term = string * int
-
-type unit_expr = unit_term list
 
 type vtype_def = string * typ list
 
@@ -56,7 +56,7 @@ type func_def = {
   body: stmt list;
 }
 
-(* program = (globals, units, vartypes, functions) *)
+(* program = (global;s, units, vartypes, functions) *)
 type program = bind list * unit_def list * vtype_def list * func_def list
 
 (* Pretty-printing functions *)
@@ -69,11 +69,16 @@ let string_of_bop = function
   | And -> "&&"
   | Or -> "||"
 
+  
+let string_of_unit_term (name, exp) = "[" ^ name ^ " " ^ string_of_int exp ^ "]"
+
+let string_of_unit_expr uexpr = String.concat "" (List.map string_of_unit_term uexpr)
+
 let rec string_of_expr = function
-    IntLit(l) -> string_of_int l
+    IntLit(l, u) -> string_of_int l ^ string_of_unit_expr u
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
-  | FloatLit(l) -> string_of_float l
+  | FloatLit(l, u) -> string_of_float l ^ string_of_unit_expr u
   | CharLit(l) -> String.make 1 l
   | StrLit(l) -> l
   | Id(s) -> s
@@ -98,8 +103,6 @@ let string_of_typ = function
   | Float -> "float"
   | Char -> "char"
   | Str -> "string"
-
-let string_of_unit_term (name, exp) = "[" ^ name ^ " " ^ string_of_int exp ^ "]"
 
 let string_of_bind (t, id, units) =
   string_of_typ t ^ " " ^ id ^ " " ^ String.concat "" (List.map string_of_unit_term units)

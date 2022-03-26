@@ -1,7 +1,7 @@
 /* The GCD algorithm in NanoC */
 /* TODO: change to GoSci */
 int a;
-int b [m][s -2];
+float b [m][s -1];
 
 unit U {}
 
@@ -32,20 +32,16 @@ int max(int a, int b) {
 
 int main() {
   int x;
-  int y;
-  float z [t];
+  float z [s];
   char c;
   string s;
   a = 18;
-  b = 9;
+  b = 2.9;
   x = 2;
-  y = 14;
-  z = 1.23;
+  z = 2.9 + 5.8;
   c = 'c';
   s = "abc";
-  print(gcd(x,y));
   print(gcd(3,15));
-  print(gcd(99,121));
-  print(gcd(a,b));
+  print(gcd(a,x));
   return 0;
 }

@@ -2,7 +2,7 @@
 
 open Ast
 
-type sexpr = typ * sx
+type sexpr = (typ * unit_expr) * sx
 and sx =
     SIntLit of int
   | SBoolLit of bool
@@ -48,8 +48,8 @@ type sprogram = bind list * sunit_def list * svtype_def list * sfunc_def list
 
 
 (* Pretty-printing functions *)
-let rec string_of_sexpr (t, e) =
-  "(" ^ string_of_typ t ^ " : " ^ (match e with
+let rec string_of_sexpr ((t, u), e) =
+  "(" ^ string_of_typ t ^ string_of_unit_expr u ^ " : " ^ (match e with
         SIntLit(l) -> string_of_int l
       | SBoolLit(true) -> "true"
       | SBoolLit(false) -> "false"
