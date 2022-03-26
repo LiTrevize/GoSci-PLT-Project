@@ -215,9 +215,9 @@ let check (globals, units, vtypes, functions) =
           in (fd.rtyp, SCall(fname, args'))
       | _ as l -> raise (Failure ("Invalid operation: " ^ (string_of_expr l)))
     in
-      match unt.prop with
-      | BaseUnit -> {suname=unt.uname; sprop=SBaseUnit}
-      | AUnit l -> {suname=unt.uname; sprop=SAUnit l}
-      | CUnit (e, id) -> {suname=unt.uname; sprop=SCUnit(check_num_expr e, id)}
+      match snd unt with
+      | BaseUnit -> (fst unt, SBaseUnit)
+      | AUnit l -> (fst unt, SAUnit l)
+      | CUnit (e, id) -> (fst unt, SCUnit(check_num_expr e, id))
   in
   (globals, List.map check_unit units, vtypes, List.map check_func functions)

@@ -30,10 +30,7 @@ type sunit_prop =
   (* Abstract Unit *)
   | SAUnit of string list
 
-type sunit_def = {
-  suname: string;
-  sprop: sunit_prop
-}
+type sunit_def = string * sunit_prop
 
 type svtype_def = string * typ list
 
@@ -85,8 +82,8 @@ let string_of_sfdecl fdecl =
   "}\n"
 
 let string_of_sudecl udecl =
-  "unit " ^ udecl.suname ^ " {\n" ^
-  (match udecl.sprop with
+  "unit " ^ fst udecl ^ " {\n" ^
+  (match snd udecl with
   | SBaseUnit -> ""
   | SCUnit (e, id) -> (string_of_sexpr e) ^ " " ^ id ^ "\n"
   | SAUnit ids -> String.concat " | " ids ^ "\n")

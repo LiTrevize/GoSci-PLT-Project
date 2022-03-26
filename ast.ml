@@ -23,10 +23,8 @@ type unit_prop =
   (* Abstract Unit *)
   | AUnit of string list
 
-type unit_def = {
-  uname: string;
-  prop: unit_prop
-}
+(* unit_def: (name, unit_prop) *)
+type unit_def = string * unit_prop
 
 type vtype_def = string * typ list
 
@@ -103,8 +101,8 @@ let string_of_fdecl fdecl =
   "}\n"
 
 let string_of_udecl udecl =
-  "unit " ^ udecl.uname ^ " {\n" ^
-  (match udecl.prop with
+  "unit " ^ fst udecl ^ " {\n" ^
+  (match snd udecl with
   | BaseUnit -> ""
   | CUnit (e, id) -> (string_of_expr e) ^ " " ^ id ^ "\n"
   | AUnit ids -> String.concat " | " ids ^ "\n")

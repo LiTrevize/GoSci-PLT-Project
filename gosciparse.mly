@@ -72,7 +72,7 @@ udecl_args:
   | units_opt { $1 }
 
 udecl:
-    UNIT ID LBRACE udecl_args RBRACE { { uname=$2; prop=$4 } }
+    UNIT ID LBRACE udecl_args RBRACE { ($2, $4) }
 
 type_list:
     typ  { [$1] }
