@@ -92,7 +92,7 @@ fdecl:
   vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
   {
     {
-      rtyp=(match $1 with (t, i, u) -> t);
+      rtyp=(match $1 with (t, i, u) -> (t, u));
       fname=(match $1 with (t, i, u) -> i);
       formals=$3;
       locals=$6;

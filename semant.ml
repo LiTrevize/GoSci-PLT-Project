@@ -52,7 +52,7 @@ let check (globals, units, vtypes, functions) =
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls =
     StringMap.add "print" {
-      rtyp = Int;
+      rtyp = (Int, []);
       fname = "print";
       formals = [(Int, "x", [])];
       locals = []; body = [] } StringMap.empty
@@ -148,7 +148,7 @@ let check (globals, units, vtypes, functions) =
                in ((check_type_assign ft et err, check_unit_assign fu eu err), e')
           in
           let args' = List.map2 check_call fd.formals args
-          in ((fd.rtyp, []), SCall(fname, args'))
+          in (fd.rtyp, SCall(fname, args'))
     in
 
     let check_bool_expr e =
@@ -174,10 +174,10 @@ let check (globals, units, vtypes, functions) =
         SWhile(check_bool_expr e, check_stmt st)
       | Return e ->
         let ((t, u), e') = check_expr e in
-        if t = func.rtyp then SReturn ((t, u), e')
+        if (t, u) = func.rtyp then SReturn ((t, u), e')
         else raise (
             Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-                     string_of_typ func.rtyp ^ " in " ^ string_of_expr e))
+                     string_of_rtyp func.rtyp ^ " in " ^ string_of_expr e))
     in (* body of check_func *)
     { srtyp = func.rtyp;
       sfname = func.fname;
@@ -228,7 +228,7 @@ let check (globals, units, vtypes, functions) =
                in ((check_type_assign ft et err, check_unit_assign fu eu err), e')
           in
           let args' = List.map2 check_call fd.formals args
-          in ((fd.rtyp, []), SCall(fname, args'))
+          in (fd.rtyp, SCall(fname, args'))
         | _ as l -> raise (Failure ("Invalid operation for unit declaration: " ^ (string_of_expr l)))
     in
       match snd unt with

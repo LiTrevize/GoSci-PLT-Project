@@ -49,7 +49,7 @@ type bind = typ * string * unit_expr
 
 (* func_def: ret_typ fname formals locals body *)
 type func_def = {
-  rtyp: typ;
+  rtyp: typ * unit_expr;
   fname: string;
   formals: bind list;
   locals: bind list;
@@ -110,8 +110,10 @@ let string_of_bind (t, id, units) =
 let string_of_vdecl bnd =
   string_of_bind bnd ^ ";\n"
 
+let string_of_rtyp rtyp = string_of_typ (fst rtyp) ^ " " ^ string_of_unit_expr (snd rtyp)
+
 let string_of_fdecl fdecl =
-  string_of_typ fdecl.rtyp ^ " " ^
+  string_of_rtyp fdecl.rtyp ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.formals) ^
   ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^

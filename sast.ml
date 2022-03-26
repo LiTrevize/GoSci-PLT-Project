@@ -36,7 +36,7 @@ type svtype_def = string * typ list
 
 (* func_def: ret_typ fname formals locals body *)
 type sfunc_def = {
-  srtyp: typ;
+  srtyp: typ * unit_expr;
   sfname: string;
   sformals: bind list;
   slocals: bind list;
@@ -74,7 +74,7 @@ let rec string_of_sstmt = function
   | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
 
 let string_of_sfdecl fdecl =
-  string_of_typ fdecl.srtyp ^ " " ^
+  string_of_rtyp fdecl.srtyp ^ " " ^
   fdecl.sfname ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.sformals) ^
   ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.slocals) ^
