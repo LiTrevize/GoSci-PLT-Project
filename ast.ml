@@ -2,6 +2,10 @@
 
 type bop = Add | Sub | Equal | Neq | Less | And | Or
 
+type uop = Inc | Dec
+
+type aop = As | Pas | Mias | Das | Muas
+
 type typ = Int | Bool | Float | Char | Str
 
 (*
@@ -36,13 +40,39 @@ type unit_def = string * unit_prop
 
 type vtype_def = string * typ list
 
-type stmt =
-    Block of stmt list
-  | Expr of expr
-  | If of expr * stmt * stmt
-  | While of expr * stmt
-  (* return *)
-  | Return of expr
+
+type simple_stmt = 
+    ExprS of expr
+  | IncS of expr * uop
+  | Assignment of expr list * aop * expr list
+
+type stmt = 
+    LabelS of string * stmt
+  | SimpleS of simple_stmt
+  | ReturnS of expr list option
+  | Block of stmt list
+  | IfS of simple_stmt option * expr * stmt * stmt option
+  | SwitchS of simple_stmt option * expr option * switch_case list
+  | MatchS of simple_stmt option * string * expr * match_clause list
+  | ForS of ftype * stmt
+  | LoopS of loop_ctrl_stmt
+  | FallS of int
+
+and loop_ctrl_stmt = 
+    BreakS of string option
+  | ContinueS of string option
+
+and switch_case = 
+  CaseS of expr list * stmt list
+
+and match_clause = 
+  MatchC of typ list * stmt list
+
+and ftype = 
+    Condition of expr
+  | FClause of stmt option * expr option * simple_stmt option
+  | RClause of string * expr
+
 
 (* int x [m][s -2]: name binding *)
 type bind = typ * string * unit_expr
@@ -74,6 +104,17 @@ let string_of_unit_term (name, exp) = "[" ^ name ^ " " ^ string_of_int exp ^ "]"
 
 let string_of_unit_expr uexpr = String.concat "" (List.map string_of_unit_term uexpr)
 
+let string_of_uop = function
+    Inc -> "++"
+  | Dec -> "--"
+
+let string_of_aop = function
+    As -> "="
+  | Pas -> "+="
+  | Mias -> "-="
+  | Das -> "/="
+  | Muas -> "*="
+
 let rec string_of_expr = function
     IntLit(l, u) -> string_of_int l ^ string_of_unit_expr u
   | BoolLit(true) -> "true"
@@ -88,14 +129,61 @@ let rec string_of_expr = function
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
+
 let rec string_of_stmt = function
-    Block(stmts) ->
+    LabelS(label, stmt) -> label ^ string_of_stmt stmt
+  | SimpleS(stmt) ->
+    begin
+      match stmt with
+      | ExprS(expr) -> string_of_expr expr ^ "\n"
+      | IncS(expr, uop) -> string_of_expr expr ^ string_of_uop uop ^ "\n"
+      | Assignment(exprs1, aop, exprs2) ->
+        String.concat "" (List.map string_of_expr exprs1) ^ string_of_aop aop ^
+        String.concat "" (List.map string_of_expr exprs2) ^ "\n"
+    end
+  | Block(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
-  | Expr(expr) -> string_of_expr expr ^ ";\n"
-  | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n"
-  | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
-                      string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
-  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+  | ReturnS(expr) -> 
+    begin
+      match expr with
+      | None -> "return\n"
+      | Some ex -> "return " ^ String.concat "" (List.map string_of_expr ex) ^ "\n"
+    end
+  | IfS(sstmt, expr, stmt, stmt2) -> 
+    let ss = if Option.is_none sstmt then "" else string_of_stmt (SimpleS(Option.get sstmt)) ^ ";" in
+    let el = if Option.is_none stmt2 then "" else "else" ^ string_of_stmt (Option.get stmt2) in
+    "if (" ^ ss ^ string_of_expr expr ^ ")\n" ^ el
+  | SwitchS(sstmt, expr, sclist) ->
+    let ss = if Option.is_none sstmt then "" else string_of_stmt (SimpleS(Option.get sstmt)) ^ ";" in
+    let ex = if Option.is_none expr then "" else string_of_expr (Option.get expr) in
+    "switch (" ^ ss ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_switch_case sclist) ^ "\n}\n"
+  | ForS(ftype, stmt) -> 
+    let f = 
+      begin
+      match ftype with
+      | Condition(c) -> string_of_expr c
+      | FClause(stmt, expr, sstmt) -> 
+        let s = if Option.is_none stmt then ";" else string_of_stmt (Option.get stmt) ^ ";" in
+        let e = if Option.is_none expr then ";" else string_of_expr (Option.get expr) ^ ";" in
+        let ss = if Option.is_none sstmt then "" else string_of_stmt (SimpleS(Option.get sstmt)) in
+        s ^ e ^ ss
+      | RClause(id, expr) -> id ^ ";" ^ string_of_expr expr 
+      end in
+    "for (" ^ f ^ ")\n" ^ string_of_stmt stmt
+  | LoopS(stmt) -> 
+    begin
+      match stmt with
+      | BreakS(b) -> if Option.is_none b then "break\n" else "break " ^ Option.get b
+      | ContinueS(c) -> if Option.is_none c then "continue\n" else "continue " ^ Option.get c
+    end
+  | MatchS(sstmt, id, expr, mclist) -> "Not implemented.\n"
+  | FallS(_) -> "fallthrough\n"
+
+and string_of_switch_case = function
+    CaseS([], stmts) -> "default:\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
+  | CaseS(exprs, stmts) -> "case " ^ String.concat "" (List.map string_of_expr exprs) ^ 
+    ":\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
+
 
 let string_of_typ = function
     Int -> "int"

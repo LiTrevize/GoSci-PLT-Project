@@ -7,7 +7,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE COLON DOT VERBAR
 %token PLUS MINUS MUL DIV MOD POW MATMUL INC DEC ASSIGN IASSIGN
 %token EQ NEQ LT NOT AND OR
-%token VAR CONST STRUCT UNIT VARTYPE IF ELSE SWITCH MATCH CASE WHILE FOR CONTINUE BREAK FUNC
+%token VAR CONST STRUCT UNIT VARTYPE IF ELSE SWITCH MATCH CASE DEFAULT FALL WHILE FOR CONTINUE BREAK FUNC
 %token BOOL INT FLOAT CHAR STRING TENSOR
 %token RETURN COMMA
 %token <bool> BLIT
@@ -89,7 +89,7 @@ vtdecl:
 
 /* fdecl */
 fdecl:
-  vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+  vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list statement_list RBRACE
   {
     {
       rtyp=(match $1 with (t, i, u) -> (t, u));
@@ -109,19 +109,197 @@ formals_list:
   vdecl { [$1] }
   | vdecl COMMA formals_list { $1::$3 }
 
-stmt_list:
-  /* nothing */ { [] }
-  | stmt stmt_list  { $1::$2 }
 
-stmt:
-    expr SEMI                               { Expr $1      }
-  | LBRACE stmt_list RBRACE                 { Block $2 }
-  /* if (condition) { block1} else {block2} */
-  /* if (condition) stmt else stmt */
-  | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
-  | WHILE LPAREN expr RPAREN stmt           { While ($3, $5)  }
-  /* return */
-  | RETURN expr SEMI                        { Return $2      }
+
+/*
+  Missing:
+  block
+  declaration
+  expr_list
+  primary_expr
+*/
+
+block:
+    LBRACE statement_list RBRACE  { Block($2) }
+
+expr_list:
+    expr                  { [$1] }
+  | expr COMMA expr_list  { $1::$3 }
+
+statement_list:
+  /* nothing */ { [] }
+  | statement SEMI statement_list  { $1::$3 }
+
+
+statement:
+  // declaration
+  | labeled_stmt  { $1 }
+  | simple_stmt   { SimpleS($1) }
+  | return_stmt   { $1 }
+  | block         { $1 }
+  | if_stmt       { $1 }
+  | switch_stmt   { $1 }
+  // | match_stmt    { $1 }
+  | for_stmt      { $1 }
+  | loop_ctrl_stmt      { LoopS($1) }
+  | fall_through_stmt   { $1 }
+
+
+simple_stmt:
+    // empty_stmt
+  expression_stmt { $1 }
+  | inc_dec_stmt  { $1 }
+  | assignment    { $1 }
+  // | short_var_decl 
+
+
+loop_ctrl_stmt:
+    break_stmt    { $1 }
+  | continue_stmt { $1 }
+
+
+labeled_stmt:
+    label COLON statement { LabelS( $1, $3 ) }
+
+
+label:
+    ID { $1 }
+
+
+// empty_stmt:
+//  /*nothing*/
+
+
+expression_stmt:
+    expr { ExprS($1) }
+
+
+inc_dec_stmt:
+    expr INC { IncS($1, Inc) }
+  | expr DEC { IncS($1, Dec) }
+
+
+assignment:
+    expr_list assign_op expr_list { Assignment($1, $2, $3) }
+
+
+assign_op:
+  // add_op, mul_op
+    ASSIGN        { As }
+  | PLUS ASSIGN   { Pas }
+  | MINUS ASSIGN  { Mias }
+  | DIV ASSIGN    { Das }
+  | MUL ASSIGN    { Muas }
+
+
+// short_var_decl:
+//     id_list IASSIGN expr_list
+
+
+return_stmt:
+    RETURN            { ReturnS(None) }
+  | RETURN expr_list  { ReturnS(Some $2) }
+
+
+if_stmt:
+    IF LPAREN expr RPAREN block                                 { IfS(None, $3, $5, None) }
+  | IF LPAREN expr RPAREN block ELSE if_stmt                    { IfS(None, $3, $5, Some $7) }
+  | IF LPAREN expr RPAREN block ELSE block                      { IfS(None, $3, $5, Some $7) }
+  | IF LPAREN simple_stmt SEMI expr RPAREN block                { IfS(Some $3, $5, $7, None) }
+  | IF LPAREN simple_stmt SEMI expr RPAREN block ELSE if_stmt   { IfS(Some $3, $5, $7, Some $9) }
+  | IF LPAREN simple_stmt SEMI expr RPAREN block ELSE block     { IfS(Some $3, $5, $7, Some $9) }
+
+
+switch_stmt:
+    SWITCH LPAREN RPAREN LBRACE expr_case_list RBRACE                         { SwitchS(None, None, $5) }
+  | SWITCH LPAREN simple_stmt SEMI RPAREN LBRACE expr_case_list RBRACE        { SwitchS(Some $3, None, $7) }
+  | SWITCH LPAREN expr RPAREN LBRACE expr_case_list RBRACE                    { SwitchS(None, Some $3, $6) }
+  | SWITCH LPAREN simple_stmt SEMI expr RPAREN LBRACE expr_case_list RBRACE   { SwitchS(Some $3, Some $5, $8) }
+
+
+expr_case_list:
+    expr_case_clause expr_case_list { $1::$2 }  // CaseS list
+  | expr_case_clause { [$1] }
+  
+
+expr_case_clause:
+    expr_switch_case COLON statement_list   { CaseS($1, $3) }
+
+
+expr_switch_case:
+    CASE expr_list  { $2 }
+  | DEFAULT         { [] }
+
+
+// match_stmt:
+//     MATCH LPAREN ID IASSIGN primary_expr RPAREN LBRACK match_clause_list RBRACK
+//     { MatchS(None, $3, $5, $8) }
+//   | MATCH LPAREN simple_stmt SEMI ID IASSIGN primary_expr RPAREN LBRACK match_clause_list RBRACK
+//     { MatchS(Some $3, $5, $7, $10) }
+
+
+// match_clause_list:
+//     match_clause match_clause_list  { $1::$2 }  // MatchC list
+//   | match_clause                    { [$1] }
+
+
+// match_clause:
+//     match_case COLON statement_list   { MatchC($1, $3) }
+
+
+// match_case:
+// //type_list ?
+//     CASE type_list  { $2 }  // typ list
+//   | DEFAULT         { [] }
+
+
+for_stmt:
+    FOR LPAREN condition RPAREN block     { ForS(Condition($3), $5) }
+  | FOR LPAREN for_clause RPAREN block    { ForS($3, $5) }
+  | FOR LPAREN range_clause RPAREN block  { ForS($3, $5) }
+
+
+condition:
+    expr  { $1 }
+
+
+for_clause:
+    SEMI SEMI                                 { FClause(None, None, None) }
+  | init_stmt SEMI SEMI                       { FClause(Some $1, None, None) }
+  | SEMI condition SEMI                       { FClause(None, Some $2, None) }
+  | SEMI SEMI post_stmt                       { FClause(None, None, Some $3) }
+  | init_stmt SEMI condition SEMI             { FClause(Some $1, Some $3, None) }
+  | init_stmt SEMI SEMI post_stmt             { FClause(Some $1, None, Some $4) }
+  | SEMI condition SEMI post_stmt             { FClause(None, Some $2, Some $4) }
+  | init_stmt SEMI condition SEMI post_stmt   { FClause(Some $1, Some $3, Some $5) }
+
+
+init_stmt:
+    simple_stmt   { SimpleS($1) }
+  // | declaration   {  }
+
+
+post_stmt:
+    simple_stmt   { $1 }
+
+
+range_clause:
+    ID COLON expr   { RClause($1, $3) }
+
+
+break_stmt:
+    BREAK       { BreakS(None) }
+  | BREAK label { BreakS(Some $2) }
+
+
+continue_stmt:
+    CONTINUE        { ContinueS(None) }
+  | CONTINUE label  { ContinueS(Some $2) }
+
+
+fall_through_stmt:
+    FALL  { FallS(0) }
+
 
 expr:
     ILIT unit_expr_opt  { IntLit($1, $2)         }
@@ -137,7 +315,7 @@ expr:
   | expr LT     expr    { Binop($1, Less,  $3)   }
   | expr AND    expr    { Binop($1, And,   $3)   }
   | expr OR     expr    { Binop($1, Or,    $3)   }
-  | ID ASSIGN expr      { Assign($1, $3)         }
+  // | ID ASSIGN expr      { Assign($1, $3)         }
   | LPAREN expr RPAREN  { $2                     }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
@@ -203,6 +381,8 @@ one_token:
   | SWITCH    {"SWITCH"}
   | MATCH     {"MATCH"}
   | CASE      {"CASE"}
+  | DEFAULT   {"DEFAULT"}
+  | FALL      {"FALLTHROUGH"}
   | WHILE     { "WHILE" }
   | FOR       {"FOR"}
   | CONTINUE  {"CONTINUE"}
