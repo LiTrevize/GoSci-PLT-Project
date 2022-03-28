@@ -192,14 +192,14 @@ let check ((globals, units, vtypes, functions):program) =
             Failure ("return gives " ^ string_of_typ (fst t) ^ string_of_unit_expr (snd t) ^ " expected " ^
                      string_of_rtyp func.rtyp ^ " in " ^ string_of_stmt (ReturnS(e)) ))
       | IfS(simple, expr, stmt1, stmt2) -> 
-        let sim = if Option.is_none simple then None else Some (check_simple_stmt (Option.get simple)) in 
+        let sim = match simple with None -> None | Some v -> Some (check_simple_stmt v) in 
         let e = check_bool_expr expr in 
         let st1 = check_stmt stmt1 in 
-        let st2 = if Option.is_none stmt2 then None else Some (check_stmt (Option.get stmt2)) in 
+        let st2 = match stmt2 with None -> None | Some v -> Some (check_stmt v) in 
         SIfS(sim, e, st1, st2)
       | SwitchS(simple, expr, casel) -> 
-        let sim = if Option.is_none simple then None else Some (check_simple_stmt (Option.get simple)) in 
-        let e = if Option.is_none expr then None else Some (check_expr (Option.get expr)) in 
+        let sim = match simple with None -> None | Some v -> Some (check_simple_stmt v) in 
+        let e = match expr with None -> None | Some v -> Some (check_expr v) in 
         let sc = List.map (
           fun case -> 
             match case with
@@ -225,9 +225,9 @@ let check ((globals, units, vtypes, functions):program) =
           match ftype with
           | Condition(c) -> SCondition(check_expr c)
           | FClause(stmt, expr, sstmt) -> 
-            let s = if Option.is_none stmt then None else Some (check_stmt (Option.get stmt)) in
-            let e = if Option.is_none expr then None else Some (check_expr (Option.get expr)) in
-            let ss = if Option.is_none sstmt then None else Some (check_simple_stmt (Option.get sstmt)) in
+            let s = match stmt with None -> None | Some v -> Some (check_stmt v) in
+            let e = match expr with None -> None | Some v -> Some (check_expr v) in
+            let ss = match sstmt with None -> None | Some v -> Some (check_simple_stmt v) in
             SFClause(s, e, ss)
           | RClause(id, expr) -> SRClause(id, check_expr expr)
           end in

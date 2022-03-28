@@ -112,12 +112,12 @@ let rec string_of_sstmt = function
       | ex -> "return " ^ String.concat "" (List.map string_of_sexpr ex) ^ "\n"
     end
   | SIfS(sim, expr, stmt, stmt2) -> 
-    let ss = if Option.is_none sim then "" else string_of_sstmt (SSimpleS(Option.get sim)) ^ ";" in
-    let el = if Option.is_none stmt2 then "" else "else" ^ string_of_sstmt (Option.get stmt2) in
+    let ss = match sim with None -> "" | Some v -> string_of_sstmt (SSimpleS(v)) ^ ";" in
+    let el = match stmt2 with None -> "" | Some v -> "else" ^ string_of_sstmt v in
     "if (" ^ ss ^ string_of_sexpr expr ^ ")\n" ^ el
   | SSwitchS(sim, expr, sclist) ->
-    let ss = if Option.is_none sim then "" else string_of_sstmt (SSimpleS(Option.get sim)) ^ ";" in
-    let ex = if Option.is_none expr then "" else string_of_sexpr (Option.get expr) in
+    let ss = match sim with None -> "" | Some v -> string_of_sstmt (SSimpleS(v)) ^ ";" in
+    let ex = match expr with None -> "" | Some v -> string_of_sexpr v in
     "switch (" ^ ss ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_sswitch_case sclist) ^ "\n}\n"
   | SForS(ftype, stmt) -> 
     let f = 
@@ -125,9 +125,9 @@ let rec string_of_sstmt = function
       match ftype with
       | SCondition(c) -> string_of_sexpr c
       | SFClause(stmt, expr, sstmt) -> 
-        let s = if Option.is_none stmt then ";" else string_of_sstmt (Option.get stmt) ^ ";" in
-        let e = if Option.is_none expr then ";" else string_of_sexpr (Option.get expr) ^ ";" in
-        let ss = if Option.is_none sstmt then "" else string_of_sstmt (SSimpleS(Option.get sstmt)) in
+        let s = (match stmt with None -> ";" | Some v -> string_of_sstmt v ^ ";") in
+        let e = (match expr with None -> ";" | Some v -> string_of_sexpr v ^ ";") in
+        let ss = (match sstmt with None -> "" | Some v -> string_of_sstmt (SSimpleS(v))) in
         s ^ e ^ ss
       | SRClause(id, expr) -> id ^ ";" ^ string_of_sexpr expr 
       end in
@@ -135,8 +135,8 @@ let rec string_of_sstmt = function
   | SLoopS(stmt) -> 
     begin
       match stmt with
-      | SBreakS(b) -> if Option.is_none b then "break\n" else "break " ^ Option.get b
-      | SContinueS(c) -> if Option.is_none c then "continue\n" else "continue " ^ Option.get c
+      | SBreakS(b) -> (match b with None -> "break\n" | Some v -> "break " ^ v)
+      | SContinueS(c) -> (match c with None -> "continue\n" | Some v -> "continue " ^ v)
     end
   (* | SMatchS(sstmt, id, expr, mclist) -> "Not implemented.\n" *)
   | SFallS(_) -> "fallthrough\n"
