@@ -47,13 +47,14 @@ type simple_stmt =
   | Assignment of expr list * aop * expr list
 
 type stmt = 
-    LabelS of string * stmt
+    (* DeclS of decl *)
+  | LabelS of string * stmt
   | SimpleS of simple_stmt
-  | ReturnS of expr list option
+  | ReturnS of expr list
   | Block of stmt list
   | IfS of simple_stmt option * expr * stmt * stmt option
   | SwitchS of simple_stmt option * expr option * switch_case list
-  | MatchS of simple_stmt option * string * expr * match_clause list
+  (* | MatchS of simple_stmt option * string * expr * match_clause list *)
   | ForS of ftype * stmt
   | LoopS of loop_ctrl_stmt
   | FallS of int
@@ -146,8 +147,8 @@ let rec string_of_stmt = function
   | ReturnS(expr) -> 
     begin
       match expr with
-      | None -> "return\n"
-      | Some ex -> "return " ^ String.concat "" (List.map string_of_expr ex) ^ "\n"
+      | [] -> "return\n"
+      | ex -> "return " ^ String.concat "" (List.map string_of_expr ex) ^ "\n"
     end
   | IfS(sstmt, expr, stmt, stmt2) -> 
     let ss = if Option.is_none sstmt then "" else string_of_stmt (SimpleS(Option.get sstmt)) ^ ";" in
@@ -176,7 +177,7 @@ let rec string_of_stmt = function
       | BreakS(b) -> if Option.is_none b then "break\n" else "break " ^ Option.get b
       | ContinueS(c) -> if Option.is_none c then "continue\n" else "continue " ^ Option.get c
     end
-  | MatchS(sstmt, id, expr, mclist) -> "Not implemented.\n"
+  (* | MatchS(sstmt, id, expr, mclist) -> "Not implemented.\n" *)
   | FallS(_) -> "fallthrough\n"
 
 and string_of_switch_case = function

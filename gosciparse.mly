@@ -117,6 +117,8 @@ formals_list:
   declaration
   expr_list
   primary_expr
+
+  multiple return value
 */
 
 block:
@@ -132,7 +134,7 @@ statement_list:
 
 
 statement:
-  // declaration
+    // declaration   { $1 }
   | labeled_stmt  { $1 }
   | simple_stmt   { SimpleS($1) }
   | return_stmt   { $1 }
@@ -197,8 +199,8 @@ assign_op:
 
 
 return_stmt:
-    RETURN            { ReturnS(None) }
-  | RETURN expr_list  { ReturnS(Some $2) }
+    RETURN            { ReturnS([]) }
+  | RETURN expr_list  { ReturnS($2) }
 
 
 if_stmt:
@@ -348,7 +350,7 @@ one_token:
   | LBRACE    { "{" }
   | RBRACE    { "}" }
   | COLON     { ":" }
-  | SEMI      {  ";" }
+  | SEMI      { ";" }
   | COMMA     { "," }
   | DOT       { "." }
   | VERBAR    { "|" }

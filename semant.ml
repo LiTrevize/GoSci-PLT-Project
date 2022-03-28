@@ -158,6 +158,20 @@ let check ((globals, units, vtypes, functions):program) =
       |  _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
     in
 
+    let check_int_expr e = 
+      let ((t, u), e') = check_expr e in
+      match t with
+      | Int -> ((t, u), e')
+      |  _ -> raise (Failure ("expected Int expression in " ^ string_of_expr e))
+    in
+
+    let check_assignable_expr e =
+      let ((t, u), e') = check_expr e in
+      match e' with
+      | SId _ -> ((t, u), e')
+      |  _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
+    in
+
     let rec check_stmt_list =function
         [] -> []
       | Block sl :: sl'  -> check_stmt_list (sl @ sl') (* Flatten blocks *)
@@ -167,17 +181,92 @@ let check ((globals, units, vtypes, functions):program) =
       (* A block is correct if each statement is correct and nothing
          follows any Return statement.  Nested blocks are flattened. *)
         Block sl -> SBlock (check_stmt_list sl)
-      | Expr e -> SExpr (check_expr e)
-      | If(e, st1, st2) ->
-        SIf(check_bool_expr e, check_stmt st1, check_stmt st2)
-      | While(e, st) ->
-        SWhile(check_bool_expr e, check_stmt st)
-      | Return e ->
-        let ((t, u), e') = check_expr e in
-        if (t, u) = func.rtyp then SReturn ((t, u), e')
+        (* A label treated as variable*)
+      | LabelS(lb, st) ->  check_stmt st
+      | SimpleS st -> SSimpleS(check_simple_stmt st)
+      | ReturnS e -> 
+        let el = List.map check_expr e in
+        let t = fst (List.hd el) in 
+        if t = func.rtyp then SReturnS el
         else raise (
-            Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-                     string_of_rtyp func.rtyp ^ " in " ^ string_of_expr e))
+            Failure ("return gives " ^ string_of_typ (fst t) ^ string_of_unit_expr (snd t) ^ " expected " ^
+                     string_of_rtyp func.rtyp ^ " in " ^ string_of_stmt (ReturnS(e)) ))
+      | IfS(simple, expr, stmt1, stmt2) -> 
+        let sim = if Option.is_none simple then None else Some (check_simple_stmt (Option.get simple)) in 
+        let e = check_bool_expr expr in 
+        let st1 = check_stmt stmt1 in 
+        let st2 = if Option.is_none stmt2 then None else Some (check_stmt (Option.get stmt2)) in 
+        SIfS(sim, e, st1, st2)
+      | SwitchS(simple, expr, casel) -> 
+        let sim = if Option.is_none simple then None else Some (check_simple_stmt (Option.get simple)) in 
+        let e = if Option.is_none expr then None else Some (check_expr (Option.get expr)) in 
+        let sc = List.map (
+          fun case -> 
+            match case with
+            CaseS(el, sl) ->
+          let el' = List.map check_expr el in 
+          let sl' = List.map check_stmt sl in 
+          SCaseS(el', sl')) casel in 
+        SSwitchS(sim, e, sc)
+      (* | MatchS(sim, var, expr, matchl) -> 
+        let sim = if Option.is_none simple then None else check_simple_stmt (Option.get simple) in 
+        (* add var to symbol table ? *)
+        let e = check_expr e in 
+        let mc = List.map (
+          fun case ->
+            match case with ->
+            MatchC(_, sl) ->
+          let sl' = List.map check_stmt sl in 
+          SMatchC(tl, sl')) matchl in 
+        SMatchS(sim, var, e, sl') *)
+      | ForS(ftype, stmt) ->
+        let f =
+          begin
+          match ftype with
+          | Condition(c) -> SCondition(check_expr c)
+          | FClause(stmt, expr, sstmt) -> 
+            let s = if Option.is_none stmt then None else Some (check_stmt (Option.get stmt)) in
+            let e = if Option.is_none expr then None else Some (check_expr (Option.get expr)) in
+            let ss = if Option.is_none sstmt then None else Some (check_simple_stmt (Option.get sstmt)) in
+            SFClause(s, e, ss)
+          | RClause(id, expr) -> SRClause(id, check_expr expr)
+          end in
+        SForS(f, check_stmt stmt)
+      | LoopS(ctrl) -> 
+        let l = 
+        begin
+        match ctrl with
+        | BreakS(b) -> SBreakS(b)
+        | ContinueS(c) -> SContinueS(c)
+        end in
+        SLoopS(l)
+      | FallS(_) -> SFallS(0)
+      
+    
+    and check_simple_stmt =function
+        ExprS e -> SExprS(check_expr e)
+      | IncS(e, u) -> 
+        let _ = check_int_expr e in
+        let e' = check_assignable_expr e in
+        SIncS(e', u)
+      | Assignment(varl, a, el) -> 
+        let llen = List.length varl in 
+        let rlen = List.length el in 
+        if llen != rlen then raise (Failure( string_of_int llen ^ " variables, " ^
+          string_of_int rlen ^ " value(s) are given" ^ string_of_stmt (SimpleS(Assignment(varl, a, el))))) 
+        else 
+          if a != As && llen > 1 then raise (Failure("More than 1 variable are given" ^ string_of_stmt (SimpleS(Assignment(varl, a, el)))))
+          else
+        let lvar = List.map check_assignable_expr varl in 
+        let rval = List.map check_expr el in 
+        let _ = List.map2 (fun ((vart, varu), _) ((valt, valu), _) -> 
+        let err = "illegal assignment " ^ string_of_typ vart ^ string_of_unit_expr varu ^ " = " ^
+                  string_of_typ valt ^ string_of_unit_expr valu ^ " in " ^ string_of_stmt (SimpleS(Assignment(varl, a, el)))
+        in
+        let _ = check_type_assign vart valt err in 
+        check_unit_assign varu valu err) lvar rval in SAssignment(lvar, a, rval)
+        
+        
     in (* body of check_func *)
     { srtyp = func.rtyp;
       sfname = func.fname;
