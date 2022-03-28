@@ -51,6 +51,8 @@ rule token = parse
 | "switch"    { SWITCH }
 | "match"     { MATCH }
 | "case"      { CASE }
+| "default"   { DEFAULT }
+| "fallthrough" { FALL }
 | "while"     { WHILE }
 | "for"       { FOR }
 | "continue"  { CONTINUE }
