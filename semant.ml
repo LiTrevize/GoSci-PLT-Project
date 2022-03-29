@@ -325,4 +325,8 @@ let check ((globals, units, vtypes, functions):program) =
       | AUnit l -> (fst unt, SAUnit l)
       | CUnit (e, id) -> (fst unt, SCUnit(check_num_expr e, id))
   in
-  (globals, List.map check_unit units, vtypes, List.map check_func functions)
+  let check_vtype = function
+  | VarType(name, type_list) -> SVarType(name, type_list)
+  | StructType(name, bind_list) -> SStructType(name, bind_list)
+  in
+  (globals, List.map check_unit units, List.map check_vtype vtypes, List.map check_func functions)

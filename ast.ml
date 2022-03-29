@@ -38,7 +38,6 @@ type unit_prop =
 (* unit_def: (name, unit_prop) *)
 type unit_def = string * unit_prop
 
-type vtype_def = string * typ list
 
 
 type simple_stmt = 
@@ -87,7 +86,11 @@ type func_def = {
   body: stmt list;
 }
 
-(* program = (global;s, units, vartypes, functions) *)
+type vtype_def = 
+VarType of string * typ list
+| StructType of string * bind list
+
+(* program = (global;s, units, vartypes, functions, types) *)
 type program = bind list * unit_def list * vtype_def list * func_def list
 
 (* Pretty-printing functions *)
@@ -218,8 +221,9 @@ let string_of_udecl (udecl:unit_def) =
   ^ "}\n"
 
 let string_of_vtype (vtype:vtype_def) = 
-  "vartype " ^ (fst vtype) ^ " {\n" ^ String.concat " | " (List.map string_of_typ (snd vtype)) ^ "\n}\n"
-
+  match vtype with 
+  | VarType (name, type_list) -> "vartype " ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_typ type_list) ^ "\n}\n"
+  | StructType(name, bind_list) -> "structtype" ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_bind bind_list) ^ "\n}\n"
 let string_of_program ((vars, units, vtypes, funcs):program) =
   "\n\nParsed program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^

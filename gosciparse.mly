@@ -38,7 +38,7 @@ program:
   decls EOF { $1}
 
 decls:
-   /* nothing */    { ([], [], [], [])               }
+   /* nothing */    { ([], [], [], []) }
  | vdecl SEMI decls { match $3 with (v, u, vt, f) -> (($1 :: v), u, vt, f) }
  | udecl decls      { match $2 with (v, u, vt, f) -> (v, ($1 :: u), vt, f) }
  | vtdecl decls     { match $2 with (v, u, vt, f) -> (v, u, ($1 :: vt), f) }
@@ -85,7 +85,8 @@ type_list:
   | typ VERBAR type_list  { $1 :: $3 }
 
 vtdecl:
-    VARTYPE ID LBRACE type_list RBRACE  { ($2, $4) }
+    VARTYPE ID LBRACE type_list RBRACE  { VarType($2, $4) }
+  | STRUCT ID LBRACE vdecl_list RBRACE { StructType($2, $4) }
 
 /* fdecl */
 fdecl:
