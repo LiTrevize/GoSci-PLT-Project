@@ -125,10 +125,14 @@ let check ((globals, units, vtypes, functions):program) =
         if t1 = t2 then
           (* Determine expression type based on operator and operand types *)
           let t = match bop with
-              Add | Sub when t1 = Int -> Int
-            | Add | Sub when t1 = Float -> Float
-            | Equal | Geq | Neq | Leq -> Bool
-            | Great | Less when t1 = Int || t1 = Float -> Bool
+              Add | Sub | Mul when t1 = Int -> Int
+            | Add | Sub | Mul when t1 = Float -> Float
+            | Div | Mod when t1 = Int   -> if e2' = SIntLit(0)
+              then raise(Failure("Div by 0: " ^ string_of_expr e)) else Int
+            | Div when t1 = Float -> if e2' = SFloatLit(0.)
+              then raise(Failure("Div by 0.0: " ^ string_of_expr e)) else Float
+            | Equal | Neq -> Bool 
+            | Geq | Leq | Great | Less when t1 = Int || t1 = Float -> Bool
             | And | Or when t1 = Bool -> Bool
             | _ -> raise (Failure err)
           in

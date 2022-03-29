@@ -35,33 +35,37 @@ int max(int a, int b) {
 
 int main() {
   int a;
+  float aa;
   float b [s];
   char c;
   int e;
   string s;
   bool t;
+  int x;
+  int i;
   
-  a = 18;
+  a = 10;
+  aa = 18.1;
   b = 2.9;
-  b = -a + b;
+  x = 2;
+  b = -aa + b;
   b = 2.9 * 5.8;
   c = 'c';
   s = "helloworld";
-  e = a * b / 99 % 1;
   t = (true && (!false)) || false;
-  ++a;
-  --x;
+  ++aa;
+  --b;
   !t;
   
   for (i = 0; i < a; i=i+1) {
     print(i);
   }
 
-  if (b >= a) {
-      a = 100;
+  if (b >= aa) {
+      aa = 100.0;
   }
-  if (a > b) {
-      b = 100;
+  if (aa > b) {
+      b = 100.0;
   }
 
   switch (x+1;x) {
