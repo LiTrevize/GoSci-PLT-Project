@@ -31,7 +31,7 @@ open Ast
 %left EQ NEQ
 %left LT GT GEQ LEQ
 %left PLUS MINUS
-%left MUL DIV MOD
+%left MUL DIV MOD POW
 %right NOT
 
 %%
@@ -307,6 +307,7 @@ expr:
   | expr MINUS  expr    { Binop($1, Sub,   $3)   }
   | expr MUL    expr    { Binop($1, Mul,   $3)   }
   | expr DIV    expr    { Binop($1, Div,   $3)   }
+  | expr POW    expr    { Binop($1, Pow,   $3)   }
   | expr MOD    expr    { Binop($1, Mod,   $3)   }
   | expr EQ     expr    { Binop($1, Equal, $3)   }
   | expr GEQ    expr    { Binop($1, Geq,   $3)   }

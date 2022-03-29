@@ -127,6 +127,8 @@ let check ((globals, units, vtypes, functions):program) =
           let t = match bop with
               Add | Sub | Mul when t1 = Int -> Int
             | Add | Sub | Mul when t1 = Float -> Float
+            | Pow when t1 = Int && t2 = Int -> Int
+            | Pow when t1 = Float && t2 = Int -> Float
             | Div | Mod when t1 = Int   -> if e2' = SIntLit(0)
               then raise(Failure("Div by 0: " ^ string_of_expr e)) else Int
             | Div when t1 = Float -> if e2' = SFloatLit(0.)

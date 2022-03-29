@@ -1,6 +1,6 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type bop = Add | Sub | Mul | Div | Mod | Equal | And | Or 
+type bop = Add | Sub | Mul | Div | Pow | Mod | Equal | And | Or 
           | Geq | Neq | Leq | Great | Less
 
 type uop = Inc | Dec | Not | Neg
@@ -97,6 +97,7 @@ let string_of_bop = function
   | Sub -> "-"
   | Mul -> "*"
   | Div -> "/"
+  | Pow -> "^"
   | Mod -> "%"
   | Equal -> "=="
   | Geq -> ">="
