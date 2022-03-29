@@ -29,8 +29,10 @@ open Ast
 %left OR
 %left AND
 %left EQ NEQ
-%left LT
+%left LT GT GEQ LEQ
 %left PLUS MINUS
+%left MUL DIV MOD
+%right NOT
 
 %%
 
