@@ -104,6 +104,7 @@ let check ((globals, units, vtypes, functions):program) =
       | CharLit l -> ((Char, []), SCharLit l)
       | StrLit l -> ((Str, []), SStrLit l)
       | Id var -> ((type_of_identifier var symbols, unit_of_identifier var symbols), SId var)
+      | Paren(e) -> check_expr e
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var symbols
         and lu = unit_of_identifier var symbols
@@ -124,10 +125,16 @@ let check ((globals, units, vtypes, functions):program) =
         if t1 = t2 then
           (* Determine expression type based on operator and operand types *)
           let t = match bop with
-              Add | Sub when t1 = Int -> Int
-            | Add | Sub when t1 = Float -> Float
-            | Equal | Neq -> Bool
-            | Less when t1 = Int || t1 = Float -> Bool
+              Add | Sub | Mul when t1 = Int -> Int
+            | Add | Sub | Mul when t1 = Float -> Float
+            | Pow when t1 = Int && t2 = Int -> Int
+            | Pow when t1 = Float && t2 = Int -> Float
+            | Div | Mod when t1 = Int   -> if e2' = SIntLit(0)
+              then raise(Failure("Div by 0: " ^ string_of_expr e)) else Int
+            | Div when t1 = Float -> if e2' = SFloatLit(0.)
+              then raise(Failure("Div by 0.0: " ^ string_of_expr e)) else Float
+            | Equal | Neq -> Bool 
+            | Geq | Leq | Great | Less when t1 = Int || t1 = Float -> Bool
             | And | Or when t1 = Bool -> Bool
             | _ -> raise (Failure err)
           in
@@ -135,6 +142,21 @@ let check ((globals, units, vtypes, functions):program) =
           let check_unit_bop u1 u2 bop = u1 in
           ((t, check_unit_bop u1 u2 bop), SBinop(((t1, u1), e1'), bop, ((t2, u2), e2')))
         else raise (Failure err)
+
+      | Unaop(uop, e) as ex ->
+        let ((t, u), e') = check_expr e in 
+        let err = "illegal unary operator " ^ 
+            string_of_typ t ^ string_of_unit_expr u ^ " " ^ string_of_uop uop ^ " in " ^ string_of_expr ex
+        in 
+        let t = match uop with
+              Neg when t = Int || t = Float -> t
+            | Inc when t = Int || t = Float -> t
+            | Dec when t = Int || t = Float -> t
+            | Not when t = Bool -> Bool
+            | _ -> raise (Failure err)
+        in let check_unit_uop uop u = u in
+        ((t, check_unit_uop uop u), SUnaop(uop, ((t, u), e')))
+      
       | Call(fname, args) as call ->
         let fd = find_func fname in
         let param_length = List.length fd.formals in

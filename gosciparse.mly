@@ -6,7 +6,7 @@ open Ast
 
 %token SEMI LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE COLON DOT VERBAR
 %token PLUS MINUS MUL DIV MOD POW MATMUL INC DEC ASSIGN IASSIGN
-%token EQ NEQ LT NOT AND OR
+%token EQ GEQ NEQ LEQ GT LT NOT AND OR
 %token VAR CONST STRUCT UNIT VARTYPE IF ELSE SWITCH MATCH CASE DEFAULT FALL WHILE FOR CONTINUE BREAK FUNC
 %token BOOL INT FLOAT CHAR STRING TENSOR
 %token RETURN COMMA
@@ -29,8 +29,10 @@ open Ast
 %left OR
 %left AND
 %left EQ NEQ
-%left LT
+%left LT GT GEQ LEQ
 %left PLUS MINUS
+%left MUL DIV MOD POW
+%right NOT
 
 %%
 
@@ -303,13 +305,24 @@ expr:
   | ID                  { Id($1)                 }
   | expr PLUS   expr    { Binop($1, Add,   $3)   }
   | expr MINUS  expr    { Binop($1, Sub,   $3)   }
+  | expr MUL    expr    { Binop($1, Mul,   $3)   }
+  | expr DIV    expr    { Binop($1, Div,   $3)   }
+  | expr POW    expr    { Binop($1, Pow,   $3)   }
+  | expr MOD    expr    { Binop($1, Mod,   $3)   }
   | expr EQ     expr    { Binop($1, Equal, $3)   }
-  | expr NEQ    expr    { Binop($1, Neq, $3)     }
+  | expr GEQ    expr    { Binop($1, Geq,   $3)   }
+  | expr NEQ    expr    { Binop($1, Neq,   $3)   }
+  | expr LEQ    expr    { Binop($1, Leq,   $3)   }
+  | expr GT     expr    { Binop($1, Great, $3)   }
   | expr LT     expr    { Binop($1, Less,  $3)   }
   | expr AND    expr    { Binop($1, And,   $3)   }
   | expr OR     expr    { Binop($1, Or,    $3)   }
-  | ID ASSIGN expr      { Assign($1, $3)         }
-  | LPAREN expr RPAREN  { $2                     }
+  | NOT    expr         { Unaop(Not,       $2)   }
+  | MINUS  expr         { Unaop(Neg,       $2)   }
+  | INC    expr         { Unaop(Inc,       $2)   }
+  | DEC    expr         { Unaop(Dec,       $2)   }
+  | ID ASSIGN expr      { Assign($1,       $3)   }
+  | LPAREN expr RPAREN  { Paren(           $2)   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
 

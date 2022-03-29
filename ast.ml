@@ -1,8 +1,9 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type bop = Add | Sub | Equal | Neq | Less | And | Or
+type bop = Add | Sub | Mul | Div | Pow | Mod | Equal | And | Or 
+          | Geq | Neq | Leq | Great | Less
 
-type uop = Inc | Dec
+type uop = Inc | Dec | Not | Neg
 
 type typ = Int | Bool | Float | Char | Str
 
@@ -22,7 +23,9 @@ type expr =
   | StrLit of string
   | Id of string
   | Binop of expr * bop * expr
+  | Unaop of uop * expr
   | Assign of string * expr
+  | Paren of expr
   (* function call *)
   | Call of string * expr list
 
@@ -92,8 +95,15 @@ type program = bind list * unit_def list * vtype_def list * func_def list
 let string_of_bop = function
     Add -> "+"
   | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+  | Pow -> "^"
+  | Mod -> "%"
   | Equal -> "=="
+  | Geq -> ">="
   | Neq -> "!="
+  | Leq -> "<="
+  | Great -> ">"
   | Less -> "<"
   | And -> "&&"
   | Or -> "||"
@@ -106,7 +116,8 @@ let string_of_unit_expr uexpr = String.concat "" (List.map string_of_unit_term u
 let string_of_uop = function
     Inc -> "++"
   | Dec -> "--"
-
+  | Not -> "!"
+  | Neg -> "-"
 
 let rec string_of_expr = function
     IntLit(l, u) -> string_of_int l ^ string_of_unit_expr u
@@ -118,7 +129,9 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_expr e2
+  | Unaop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Paren(e) ->  "(" ^ string_of_expr e ^ ")"
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
