@@ -1,6 +1,7 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type bop = Add | Sub | Equal | Neq | Less | And | Or
+type bop = Add | Sub | Mul | Div | Mod | Equal | And | Or 
+          | Geq | Neq | Leq | Great | Less
 
 type uop = Inc | Dec | Not | Neg
 
@@ -24,6 +25,7 @@ type expr =
   | Binop of expr * bop * expr
   | Unaop of uop * expr
   | Assign of string * expr
+  | Paren of expr
   (* function call *)
   | Call of string * expr list
 
@@ -93,8 +95,14 @@ type program = bind list * unit_def list * vtype_def list * func_def list
 let string_of_bop = function
     Add -> "+"
   | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+  | Mod -> "%"
   | Equal -> "=="
+  | Geq -> ">="
   | Neq -> "!="
+  | Leq -> "<="
+  | Great -> ">"
   | Less -> "<"
   | And -> "&&"
   | Or -> "||"
@@ -122,6 +130,7 @@ let rec string_of_expr = function
     string_of_expr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_expr e2
   | Unaop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Paren(e) ->  " ( " ^ string_of_expr e ^ " ) "
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
