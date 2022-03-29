@@ -39,14 +39,18 @@ int main() {
   char c;
   string s;
   int i;
+  bool t;
   
   a = 18;
   b = 2.9;
-  x = 2;
+  x = -a + b;
   z = 2.9 + 5.8;
   c = 'c';
   s = "abc";
-
+  t = (true && (!false)) || false;
+  ++a;
+  --x;
+  !t;
   
   for (i = 0; i < a; i=i+1) {
     print(i);
