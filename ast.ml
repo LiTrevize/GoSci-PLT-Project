@@ -4,8 +4,6 @@ type bop = Add | Sub | Equal | Neq | Less | And | Or
 
 type uop = Inc | Dec
 
-type aop = As | Pas | Mias | Das | Muas
-
 type typ = Int | Bool | Float | Char | Str
 
 (*
@@ -43,8 +41,8 @@ type vtype_def = string * typ list
 
 type simple_stmt = 
     ExprS of expr
-  | IncS of expr * uop
-  | Assignment of expr list * aop * expr list
+  (* | IncS of expr * uop
+  | Assignment of expr list * aop * expr list *)
 
 type stmt = 
     (* DeclS of decl *)
@@ -54,7 +52,7 @@ type stmt =
   | Block of stmt list
   | IfS of simple_stmt option * expr * stmt * stmt option
   | SwitchS of simple_stmt option * expr option * switch_case list
-  (* | MatchS of simple_stmt option * string * expr * match_clause list *)
+  | MatchS of simple_stmt option * string * expr * match_clause list
   | ForS of ftype * stmt
   | LoopS of loop_ctrl_stmt
   | FallS of int
@@ -67,7 +65,7 @@ and switch_case =
   CaseS of expr list * stmt list
 
 and match_clause = 
-  MatchC of typ list * stmt list
+  MatchC of typ option * stmt list
 
 and ftype = 
     Condition of expr
@@ -109,12 +107,6 @@ let string_of_uop = function
     Inc -> "++"
   | Dec -> "--"
 
-let string_of_aop = function
-    As -> "="
-  | Pas -> "+="
-  | Mias -> "-="
-  | Das -> "/="
-  | Muas -> "*="
 
 let rec string_of_expr = function
     IntLit(l, u) -> string_of_int l ^ string_of_unit_expr u
@@ -137,10 +129,6 @@ let rec string_of_stmt = function
     begin
       match stmt with
       | ExprS(expr) -> string_of_expr expr ^ "\n"
-      | IncS(expr, uop) -> string_of_expr expr ^ string_of_uop uop ^ "\n"
-      | Assignment(exprs1, aop, exprs2) ->
-        String.concat "" (List.map string_of_expr exprs1) ^ string_of_aop aop ^
-        String.concat "" (List.map string_of_expr exprs2) ^ "\n"
     end
   | Block(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
@@ -152,32 +140,36 @@ let rec string_of_stmt = function
     end
   | IfS(sstmt, expr, stmt, stmt2) -> 
     let ss = match sstmt with None -> "" | Some v -> string_of_stmt (SimpleS(v)) ^ ";" in
-    let el = match stmt2 with None -> "" | Some v -> "else" ^ string_of_stmt v in
-    "if (" ^ ss ^ string_of_expr expr ^ ")\n" ^ el
+    let blk = string_of_stmt stmt in
+    let el = match stmt2 with None -> "" | Some v -> "else\n" ^ string_of_stmt v in
+    "if (" ^ ss ^ string_of_expr expr ^ ")\n" ^ blk ^ el
   | SwitchS(sstmt, expr, sclist) ->
     let ss = match sstmt with None -> "" | Some v -> string_of_stmt (SimpleS(v)) ^ ";" in
     let ex = match expr with None -> "" | Some v -> string_of_expr (v) in
-    "switch (" ^ ss ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_switch_case sclist) ^ "\n}\n"
+    "switch (" ^ ss ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_switch_case sclist) ^ "}\n"
+  | MatchS(sstmt, id, expr, mclist) -> 
+    let ss = match sstmt with None -> "" | Some v -> string_of_stmt (SimpleS(v)) ^ ";" in
+    let ex = string_of_expr expr in
+    "match (" ^ ss ^ id ^ ":=" ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_match_case mclist) ^ "}\n"
   | ForS(ftype, stmt) -> 
     let f = 
       begin
       match ftype with
       | Condition(c) -> string_of_expr c
       | FClause(stmt, expr, sstmt) -> 
-        let s = match stmt with None -> ";" | Some v -> string_of_stmt (v) ^ ";" in
-        let e = match expr with None -> ";" | Some v -> string_of_expr (v) ^ ";" in
+        let s = match stmt with None -> ";" | Some v -> string_of_stmt (v) ^ ";\n" in
+        let e = match expr with None -> ";" | Some v -> string_of_expr (v) ^ "\n;\n" in
         let ss = match sstmt with None -> "" | Some v -> string_of_stmt (SimpleS(v)) in
         s ^ e ^ ss
       | RClause(id, expr) -> id ^ ";" ^ string_of_expr expr 
       end in
-    "for (" ^ f ^ ")\n" ^ string_of_stmt stmt
+    "for (\n" ^ f ^ ")\n" ^ string_of_stmt stmt
   | LoopS(stmt) -> 
     begin
       match stmt with
       | BreakS(b) -> (match b with None -> "break\n" | Some v -> "break " ^ v)
       | ContinueS(c) -> (match c with None -> "continue\n" | Some v -> "continue " ^ v)
     end
-  (* | MatchS(sstmt, id, expr, mclist) -> "Not implemented.\n" *)
   | FallS(_) -> "fallthrough\n"
 
 and string_of_switch_case = function
@@ -185,8 +177,13 @@ and string_of_switch_case = function
   | CaseS(exprs, stmts) -> "case " ^ String.concat "" (List.map string_of_expr exprs) ^ 
     ":\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
 
+and string_of_match_case = function
+    MatchC(None, stmts) -> "default:\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
+  | MatchC(Some t, stmts) -> "case " ^ string_of_typ t ^ 
+    ":\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
 
-let string_of_typ = function
+
+and string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
   | Float -> "float"

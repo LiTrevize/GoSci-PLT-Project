@@ -121,6 +121,14 @@ formals_list:
   multiple return value
 */
 
+blocked:
+    block       { $1 }
+  | if_stmt     { $1 }
+  | for_stmt    { $1 }
+  | switch_stmt { $1 }
+  | match_stmt  { $1 }
+
+
 block:
     LBRACE statement_list RBRACE  { Block($2) }
 
@@ -130,18 +138,19 @@ expr_list:
 
 statement_list:
   /* nothing */ { [] }
-  | statement SEMI statement_list  { $1::$3 }
+  | blocked statement_list           { $1::$2 }
+  | statement SEMI statement_list   { $1::$3 }
 
 
 statement:
     // declaration   { $1 }
-  | labeled_stmt  { $1 }
+    labeled_stmt  { $1 }
   | simple_stmt   { SimpleS($1) }
   | return_stmt   { $1 }
   | block         { $1 }
   | if_stmt       { $1 }
   | switch_stmt   { $1 }
-  // | match_stmt    { $1 }
+  | match_stmt    { $1 }
   | for_stmt      { $1 }
   | loop_ctrl_stmt      { LoopS($1) }
   | fall_through_stmt   { $1 }
@@ -150,8 +159,8 @@ statement:
 simple_stmt:
     // empty_stmt
   expression_stmt { $1 }
-  | inc_dec_stmt  { $1 }
-  | assignment    { $1 }
+  // | inc_dec_stmt  { $1 }
+  // | assignment    { $1 }
   // | short_var_decl 
 
 
@@ -175,23 +184,6 @@ label:
 expression_stmt:
     expr { ExprS($1) }
 
-
-inc_dec_stmt:
-    expr INC { IncS($1, Inc) }
-  | expr DEC { IncS($1, Dec) }
-
-
-assignment:
-    expr_list assign_op expr_list { Assignment($1, $2, $3) }
-
-
-assign_op:
-  // add_op, mul_op
-    ASSIGN        { As }
-  | PLUS ASSIGN   { Pas }
-  | MINUS ASSIGN  { Mias }
-  | DIV ASSIGN    { Das }
-  | MUL ASSIGN    { Muas }
 
 
 // short_var_decl:
@@ -233,26 +225,25 @@ expr_switch_case:
   | DEFAULT         { [] }
 
 
-// match_stmt:
-//     MATCH LPAREN ID IASSIGN primary_expr RPAREN LBRACK match_clause_list RBRACK
-//     { MatchS(None, $3, $5, $8) }
-//   | MATCH LPAREN simple_stmt SEMI ID IASSIGN primary_expr RPAREN LBRACK match_clause_list RBRACK
-//     { MatchS(Some $3, $5, $7, $10) }
+match_stmt:
+    MATCH LPAREN ID IASSIGN expr RPAREN LBRACE match_clause_list RBRACE
+    { MatchS(None, $3, $5, $8) }
+  | MATCH LPAREN simple_stmt SEMI ID IASSIGN expr RPAREN LBRACE match_clause_list RBRACE
+    { MatchS(Some $3, $5, $7, $10) }
 
 
-// match_clause_list:
-//     match_clause match_clause_list  { $1::$2 }  // MatchC list
-//   | match_clause                    { [$1] }
+match_clause_list:
+    match_clause match_clause_list  { $1::$2 }  // MatchC list
+  | match_clause                    { [$1] }
 
 
-// match_clause:
-//     match_case COLON statement_list   { MatchC($1, $3) }
+match_clause:
+    match_case COLON statement_list   { MatchC($1, $3) }
 
 
-// match_case:
-// //type_list ?
-//     CASE type_list  { $2 }  // typ list
-//   | DEFAULT         { [] }
+match_case:
+    CASE typ  { Some $2 }
+  | DEFAULT   { None }
 
 
 for_stmt:
@@ -317,7 +308,7 @@ expr:
   | expr LT     expr    { Binop($1, Less,  $3)   }
   | expr AND    expr    { Binop($1, And,   $3)   }
   | expr OR     expr    { Binop($1, Or,    $3)   }
-  // | ID ASSIGN expr      { Assign($1, $3)         }
+  | ID ASSIGN expr      { Assign($1, $3)         }
   | LPAREN expr RPAREN  { $2                     }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }

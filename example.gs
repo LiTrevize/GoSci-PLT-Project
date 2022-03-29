@@ -18,16 +18,19 @@ vartype Num {
 }
 
 int gcd(int a, int b) {
-  while (a != b) {
-    if (b < a) a = a - b;
-    else b = b - a;
+  for (a != b) {
+    if (b < a) {
+      a = a - b;
+    } else {
+      b = b - a;
+    }
   }
   return a;
 }
 
 int max(int a, int b) {
-  if (a < b) return b;
-  else return a;
+  if (a < b) { return b; }
+  else { return a; }
 }
 
 int main() {
@@ -35,12 +38,38 @@ int main() {
   float z [s];
   char c;
   string s;
+  int i;
+  
   a = 18;
   b = 2.9;
   x = 2;
   z = 2.9 + 5.8;
   c = 'c';
   s = "abc";
+
+  
+  for (i = 0; i < a; i=i+1) {
+    print(i);
+  }
+
+  switch (x+1;x) {
+    case 1, 2:
+      return x;
+    case 3:
+      break;
+    default:
+      return x - 1;
+  }
+
+  match (v := c) {
+    case int:
+      return 1;
+    case float:
+      return 2;
+    default:
+      break;
+  }
+
   print(gcd(3,15));
   print(gcd(a,x));
   return 0;

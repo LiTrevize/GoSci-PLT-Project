@@ -158,7 +158,7 @@ let check ((globals, units, vtypes, functions):program) =
       |  _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
     in
 
-    let check_int_expr e = 
+    (* let check_int_expr e = 
       let ((t, u), e') = check_expr e in
       match t with
       | Int -> ((t, u), e')
@@ -170,7 +170,7 @@ let check ((globals, units, vtypes, functions):program) =
       match e' with
       | SId _ -> ((t, u), e')
       |  _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
-    in
+    in *)
 
     let rec check_stmt_list =function
         [] -> []
@@ -186,6 +186,7 @@ let check ((globals, units, vtypes, functions):program) =
       | SimpleS st -> SSimpleS(check_simple_stmt st)
       | ReturnS e -> 
         let el = List.map check_expr e in
+        if (List.length e) = 0 then SReturnS el else
         let t = fst (List.hd el) in 
         if t = func.rtyp then SReturnS el
         else raise (
@@ -208,17 +209,17 @@ let check ((globals, units, vtypes, functions):program) =
           let sl' = List.map check_stmt sl in 
           SCaseS(el', sl')) casel in 
         SSwitchS(sim, e, sc)
-      (* | MatchS(sim, var, expr, matchl) -> 
-        let sim = if Option.is_none simple then None else check_simple_stmt (Option.get simple) in 
+      | MatchS(simple, var, expr, matchl) -> 
+        let sim = match simple with None -> None | Some v -> Some (check_simple_stmt v) in
         (* add var to symbol table ? *)
-        let e = check_expr e in 
+        let e = check_expr expr in 
         let mc = List.map (
           fun case ->
-            match case with ->
-            MatchC(_, sl) ->
+            match case with
+            MatchC(t, sl) ->
           let sl' = List.map check_stmt sl in 
-          SMatchC(tl, sl')) matchl in 
-        SMatchS(sim, var, e, sl') *)
+          SMatchC(t, sl')) matchl in 
+        SMatchS(sim, var, e, mc)
       | ForS(ftype, stmt) ->
         let f =
           begin
@@ -245,27 +246,7 @@ let check ((globals, units, vtypes, functions):program) =
     
     and check_simple_stmt =function
         ExprS e -> SExprS(check_expr e)
-      | IncS(e, u) -> 
-        let _ = check_int_expr e in
-        let e' = check_assignable_expr e in
-        SIncS(e', u)
-      | Assignment(varl, a, el) -> 
-        let llen = List.length varl in 
-        let rlen = List.length el in 
-        if llen != rlen then raise (Failure( string_of_int llen ^ " variables, " ^
-          string_of_int rlen ^ " value(s) are given" ^ string_of_stmt (SimpleS(Assignment(varl, a, el))))) 
-        else 
-          if a != As && llen > 1 then raise (Failure("More than 1 variable are given" ^ string_of_stmt (SimpleS(Assignment(varl, a, el)))))
-          else
-        let lvar = List.map check_assignable_expr varl in 
-        let rval = List.map check_expr el in 
-        let _ = List.map2 (fun ((vart, varu), _) ((valt, valu), _) -> 
-        let err = "illegal assignment " ^ string_of_typ vart ^ string_of_unit_expr varu ^ " = " ^
-                  string_of_typ valt ^ string_of_unit_expr valu ^ " in " ^ string_of_stmt (SimpleS(Assignment(varl, a, el)))
-        in
-        let _ = check_type_assign vart valt err in 
-        check_unit_assign varu valu err) lvar rval in SAssignment(lvar, a, rval)
-        
+      
         
     in (* body of check_func *)
     { srtyp = func.rtyp;
