@@ -86,9 +86,14 @@ type func_def = {
   body: stmt list;
 }
 
+type shapeList = int list
+
 type vtype_def = 
 VarType of string * typ list
 | StructType of string * bind list
+| TensorType of string * shapeList 
+| ArrType of string * shapeList
+
 
 (* program = (global;s, units, vartypes, functions, types) *)
 type program = bind list * unit_def list * vtype_def list * func_def list
@@ -198,6 +203,11 @@ let string_of_typ = function
 
 let string_of_bind ((t, id, units):bind) =
   string_of_typ t ^ " " ^ id ^ " " ^ String.concat "" (List.map string_of_unit_term units)
+let rec string_of_shape  = function
+  [] -> " "
+  | hd::tl -> "[" ^ string_of_int hd ^"]" ^ string_of_shape tl
+
+
 
 let string_of_vdecl (bnd:bind) =
   string_of_bind bnd ^ ";\n"
@@ -223,7 +233,10 @@ let string_of_udecl (udecl:unit_def) =
 let string_of_vtype (vtype:vtype_def) = 
   match vtype with 
   | VarType (name, type_list) -> "vartype " ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_typ type_list) ^ "\n}\n"
-  | StructType(name, bind_list) -> "structtype" ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_bind bind_list) ^ "\n}\n"
+  | StructType(name, bind_list) -> "structType" ^ name ^ " {\n" ^ String.concat " " (List.map string_of_bind bind_list) ^ "\n}\n"
+  | TensorType(name, shape_list) -> "tensorType" ^ string_of_shape shape_list ^ name ^ "\n"
+  | ArrType(name, shape_list) -> "arrType" ^ string_of_shape shape_list ^ name ^ "\n"
+
 let string_of_program ((vars, units, vtypes, funcs):program) =
   "\n\nParsed program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^

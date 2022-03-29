@@ -84,9 +84,16 @@ type_list:
     typ  { [$1] }
   | typ VERBAR type_list  { $1 :: $3 }
 
+shape_list:
+  /*nothing*/ {[]}
+  | LBRACK ILIT RBRACK shape_list { $2::$4 }
+
 vtdecl:
     VARTYPE ID LBRACE type_list RBRACE  { VarType($2, $4) }
   | STRUCT ID LBRACE vdecl_list RBRACE { StructType($2, $4) }
+  | TENSOR INT shape_list ID {TensorType($4, $3)}
+  | TENSOR FLOAT shape_list ID {TensorType($4, $3)}
+  | typ shape_list ID { ArrType($3, $2) }
 
 /* fdecl */
 fdecl:

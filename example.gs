@@ -31,6 +31,8 @@ int max(int a, int b) {
 }
 
 int main() {
+  struct A {};
+
   int x;
   float z [s];
   char c;

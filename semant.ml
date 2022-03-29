@@ -328,5 +328,8 @@ let check ((globals, units, vtypes, functions):program) =
   let check_vtype = function
   | VarType(name, type_list) -> SVarType(name, type_list)
   | StructType(name, bind_list) -> SStructType(name, bind_list)
+  | TensorType(name, shape_list) -> STensorType(name, shape_list)
+  | ArrType(name, shape_list) -> SArrType(name, shape_list)
+ 
   in
   (globals, List.map check_unit units, List.map check_vtype vtypes, List.map check_func functions)

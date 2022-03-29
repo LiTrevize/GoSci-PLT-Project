@@ -61,6 +61,8 @@ type sunit_def = string * sunit_prop
 type svtype_def = 
 SVarType of string * typ list
 | SStructType of string * bind list
+| STensorType of string * shapeList 
+| SArrType of string * shapeList
 
 (* func_def: ret_typ fname formals locals body *)
 type sfunc_def = {
@@ -169,6 +171,8 @@ let string_of_svtype (vtype:svtype_def) =
   match vtype with 
   | SVarType (name, type_list) -> "vartype " ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_typ type_list) ^ "\n}\n"
   | SStructType(name, bind_list) -> "structtype" ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_bind bind_list) ^ "\n}\n"
+  | STensorType(name, shape_list) -> "tensorType" ^ string_of_shape shape_list ^ name ^ "\n"
+  | SArrType(name, shape_list) -> "arrType" ^ string_of_shape shape_list ^ name ^ "\n"
 
 
 let string_of_sprogram ((vars, units, vtypes, funcs):sprogram) =
