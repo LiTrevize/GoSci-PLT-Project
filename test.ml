@@ -4,16 +4,6 @@ open Ast
 open Sast
 
 
-(* let rec sum = function
-| [] -> 0
-| x :: xs -> x + sum xs *)
-
-(* let tests = "test suite for sum" >::: [
-  "empty" >:: (fun _ -> assert_equal 0 (sum []));
-  "singleton" >:: (fun _ -> assert_equal 1 (sum [1]));
-  "two_elements" >:: (fun _ -> assert_equal 3 (sum [1; 2]));
-] *)
-
 let empty_main = {
   srtyp=(Int, []);
   sfname="main";
@@ -23,7 +13,15 @@ let empty_main = {
 };;
 
 let (test_cases_parser : (string * (string * program)) list) = [
-  ("global variable declaration", ("int a;", ([(Int, "a", [])], [], [], [])));
+  ("global int variable declaration without unit", ("int a;", ([(Int, "a", [])], [], [], [])));
+  ("global float variable declaration without unit", ("float b;", ([(Float, "b", [])], [], [], [])));
+  ("global char variable declaration without unit", ("char c;", ([(Char, "c", [])], [], [], [])));
+  ("global string variable declaration without unit", ("string s;", ([(Str, "s", [])], [], [], [])));
+  ("global bool variable declaration without unit", ("bool flag;", ([(Bool, "flag", [])], [], [], [])));
+  ("global variable declaration with unit", ("float vel [m 1][s -1];",([(Float, "vel",[("m",1);("s",-1)])],[],[],[])));
+  ("empty unit",("unit U {}", ([],[("U",BaseUnit)],[],[])));
+  ("Non-empty unit",("unit km { 1000 m}", ([],[("km", CUnit(IntLit(1000,[]),"m"))],[],[])));
+  ("Vartype declaration",("vartype Num {int | float}",([],[],[("Num",[Int;Float])],[])));
 ];;
 
 let (test_cases_checker : (string * (string * sprogram)) list) = [
@@ -46,22 +44,3 @@ let test_compiler =
   ("test suite" >::: (test_param_parser @ test_param_checker));;
 
 let _ = run_test_tt_main test_compiler;;
-
-
-
-(* let test1= string_of_tokenseq (Gosciparse.tokenseq Scanner.token (Lexing.from_string "c=a+b"));;
-
-print_endline test1;;
-
-let test_scanner = "test suite for scanner" >::: [
-  "1" >:: (fun _ -> assert_equal "ID(c) ASSIGN ID(a) PLUS ID(b) " test1);
-]
-
-let test2= Gosciparse.program Scanner.token (Lexing.from_string "int a;");;
-
-let test_parser = "test suite for parser" >::: [
-  "1" >:: (fun _ -> assert_equal ([(Int,"a")], [], [], []) test2);
-
-]
-
-let _ = run_test_tt_main test_scanner *)
