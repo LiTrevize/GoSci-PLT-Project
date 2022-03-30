@@ -31,7 +31,8 @@ open Ast
 %left EQ NEQ
 %left LT GT GEQ LEQ
 %left PLUS MINUS
-%left MUL DIV MOD POW
+%left MUL DIV MOD
+%left POW
 %right NOT
 
 %%

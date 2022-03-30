@@ -28,44 +28,38 @@ int gcd(int a, int b) {
   return a;
 }
 
-int max(int a, int b) {
-  if (a < b) { return b; }
-  else { return a; }
-}
-
 int main() {
   int a;
-  float aa;
-  float b [s];
+  float b;
   char c;
-  int e;
   string s;
   bool t;
   int x;
   int i;
+  float z [s];
   
   a = 10;
-  aa = 18.1;
-  b = 2.9;
+  b = 18.1;
   x = 2 ^ 3;
-  b = -aa + b;
-  b = 2.9 * 5.8;
+  z = 2.9;
+  z = -b + z;
+  z = 2.9 * 5.8 ^ 2 / 1.0;
   c = 'c';
   s = "helloworld";
   t = (true && (!false)) || false;
-  ++aa;
-  --b;
+  ++b;
+  --z;
   !t;
   
-  for (i = 0; i < a; i=i+1) {
+  for (i = 0; i < a; ++i) {
     print(i);
   }
 
-  if (b >= aa) {
-      aa = 100.0;
-  }
-  if (aa > b) {
+  if (z >= b) {
       b = 100.0;
+  }
+  if (b > z) {
+      z = 100.0;
   }
 
   switch (x+1;x) {
