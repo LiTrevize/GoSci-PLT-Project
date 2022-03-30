@@ -1,7 +1,7 @@
 /* The GCD algorithm in NanoC */
 /* TODO: change to GoSci */
 int a;
-float b [m][s -1];
+float vel [m][s -1];
 
 unit U {}
 
@@ -33,33 +33,34 @@ int main() {
   float b;
   char c;
   string s;
-  bool t;
+  bool flag;
   int x;
   int i;
-  float z [s];
+  float t [s];
+  float acc [m][s -2];
   
   a = 10;
   b = 18.1;
   x = 2 ^ 3;
-  z = 2.9;
-  z = -b + z;
-  z = 2.9 * 5.8 ^ 2 / 1.0;
+  t = -b;
+  t = 2.9 * 5.8 ^ 2 / 1.0;
+
+  /* unit auto convertion
+     [s 2] = [s] ^ 2
+     [m][s -2] = [m][s -1] / [s]
+   */
+  t ^ 2;
+  acc = vel / t;
+  
   c = 'c';
   s = "helloworld";
-  t = (true && (!false)) || false;
+  flag = (true && (!false)) || false;
   ++b;
-  --z;
-  !t;
+  --t;
+  !flag;
   
   for (i = 0; i < a; ++i) {
     print(i);
-  }
-
-  if (z >= b) {
-      b = 100.0;
-  }
-  if (b > z) {
-      z = 100.0;
   }
 
   switch (x+1;x) {

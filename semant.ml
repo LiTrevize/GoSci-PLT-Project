@@ -46,7 +46,21 @@ let check ((globals, units, vtypes, functions):program) =
 
   let check_unit_assign lu ru err =
     (* if lvaluet = rvaluet then lvaluet else raise (Failure err) *)
-    lu
+    if lu = ru || ru = [] then lu
+    else raise (Failure ("Incompatible unit: " ^ (string_of_unit_expr lu) ^ " and " ^ (string_of_unit_expr ru)))
+  in
+
+  let unit_convert u1 u2 = 
+    (* TODO: real convert *)
+    if u1 = u2 then u1
+    else raise (Failure ((string_of_unit_expr u2) ^ " cannot be converted to " ^ (string_of_unit_expr u1)))
+  in
+
+  let rec unit_simplify u =
+    match u with
+      [] -> []
+    | hd :: sd :: tl when (fst hd) = (fst sd) -> unit_simplify ((fst hd, (snd hd) + (snd sd)) :: tl)
+    | hd :: tl -> hd :: (unit_simplify tl)
   in
 
   (* Collect function declarations for built-in functions: no bodies *)
@@ -114,31 +128,55 @@ let check ((globals, units, vtypes, functions):program) =
         in
         ((check_type_assign lt rt err, check_unit_assign lu ru err), SAssign(var, ((rt, ru), e')))
 
-      | Binop(e1, bop, e2) as e ->
-        let ((t1, u1), e1') = check_expr e1
-        and ((t2, u2), e2') = check_expr e2 in
-        let err = "illegal binary operator " ^
-                  string_of_typ t1 ^ string_of_unit_expr u1 ^ " " ^ string_of_bop bop ^ " " ^
-                  string_of_typ t2 ^ string_of_unit_expr u2 ^ " in " ^ string_of_expr e
-        in
-        (* All binary operators require operands of the same type except *)
-        (* if t1 = t2 then *)
+      | Binop(e1, bop, e2) ->
+        let ((t1, u1), e1') as se1 = check_expr e1
+        and ((t2, u2), e2') as se2 = check_expr e2 in
           (* Determine expression type based on operator and operand types *)
-          let t = match bop with
+          let check_intlit (e:sx) = match e with
+            | SIntLit l -> l
+            | _ -> raise (Failure ((string_of_sexpr se2) ^ " is not int literal"))
+          in
+          let check_type_bop t1 t2 bop = 
+            match bop with
               Add | Sub | Mul when t1 = t2 && t1 = Int -> Int
             | Add | Sub | Mul when t1 = t2 && t1 = Float -> Float
-            | Pow when t1 = Int && t2 = Int -> Int
-            | Pow when t1 = Float && t2 = Int -> Float
+            | Pow when t1 = Int && t2 = Int && check_intlit e2' >= 0 -> Int
+            | Pow when t1 = Float && t2 = Int && check_intlit e2' >= 0 -> Float
             | Div | Mod when t1 = t2 && t1 = Int -> Int
             | Div when t1 = t2 && t1 = Float -> Float
             | Equal | Neq -> Bool
             | Geq | Leq | Great | Less when t1 = Int || t1 = Float -> Bool
             | And | Or when t1 = Bool -> Bool
-            | _ -> raise (Failure err)
+            | _ -> raise (Failure ("illegal type in binary operator " ^
+            string_of_typ t1 ^ " " ^ string_of_bop bop ^ " " ^
+            string_of_typ t2))
+          in
+          (* Determine expression type based on operator and operand units *)
+          let check_unit_bop u1 u2 bop =
+            match bop with
+              Add | Sub  -> unit_convert u1 u2
+            | Mul -> unit_simplify (u1 @ u2)
+            | Div -> unit_simplify (u1 @ (List.map (fun (u, i) -> (u, -i)) u2))
+            | Pow -> 
+              (if u2 <> [] then raise (Failure "exponent must be unitless")
+              else
+                let rec repeat_unit (u:unit_expr) (n:int) = 
+                  match n with
+                    1 -> u
+                  | _ when n > 1 -> u @ (repeat_unit u (n-1))
+                  | _ -> raise (Failure "n must be positive")
+                in
+                unit_simplify (repeat_unit u1 (check_intlit e2'))
+              )
+            | Equal | Neq -> unit_convert u1 u2
+            | Geq | Leq | Great | Less -> unit_convert u1 u2
+            | _ -> u1  (* Do not check *)
+          in
+          let t = check_type_bop t1 t2 bop
           in
           (* TODO *)
-          let check_unit_bop u1 u2 bop = u1 in
-          ((t, check_unit_bop u1 u2 bop), SBinop(((t1, u1), e1'), bop, ((t2, u2), e2')))
+          let u = check_unit_bop u1 u2 bop in
+          ((t, u), SBinop(((t1, u1), e1'), bop, ((t2, u2), e2')))
         (* else raise (Failure err) *)
 
       | Unaop(uop, e) as ex ->
@@ -152,8 +190,9 @@ let check ((globals, units, vtypes, functions):program) =
             | Dec when t = Int || t = Float -> t
             | Not when t = Bool -> Bool
             | _ -> raise (Failure err)
-        in let check_unit_uop uop u = u in
-        ((t, check_unit_uop uop u), SUnaop(uop, ((t, u), e')))
+        in let check_unit_uop u uop = u in
+        let uu = check_unit_uop u uop in
+        ((t, uu), SUnaop(uop, ((t, u), e')))
       
       | Call(fname, args) as call ->
         let fd = find_func fname in
