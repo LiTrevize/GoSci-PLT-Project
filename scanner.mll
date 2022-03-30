@@ -35,7 +35,10 @@ rule token = parse
 | '='      { ASSIGN }
 | ":="     { IASSIGN }
 | "=="     { EQ }
+| ">="     { GEQ }
 | "!="     { NEQ }
+| "<="     { LEQ }
+| '>'      { GT }
 | '<'      { LT }
 | '!'      { NOT }
 | "&&"     { AND }
@@ -51,6 +54,8 @@ rule token = parse
 | "switch"    { SWITCH }
 | "match"     { MATCH }
 | "case"      { CASE }
+| "default"   { DEFAULT }
+| "fallthrough" { FALL }
 | "while"     { WHILE }
 | "for"       { FOR }
 | "continue"  { CONTINUE }

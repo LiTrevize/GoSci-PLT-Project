@@ -1,18 +1,31 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type bop = Add | Sub | Equal | Neq | Less | And | Or
+type bop = Add | Sub | Mul | Div | Pow | Mod | Equal | And | Or 
+          | Geq | Neq | Leq | Great | Less
+
+type uop = Inc | Dec | Not | Neg
 
 type typ = Int | Bool | Float | Char | Str
 
+(*
+  unit term: (unit_name, power)
+  e.g. [m -2]
+*)
+type unit_term = string * int
+
+type unit_expr = unit_term list
+
 type expr =
-    IntLit of int
+    IntLit of int * unit_expr
   | BoolLit of bool
-  | FloatLit of float
+  | FloatLit of float * unit_expr
   | CharLit of char
   | StrLit of string
   | Id of string
   | Binop of expr * bop * expr
+  | Unaop of uop * expr
   | Assign of string * expr
+  | Paren of expr
   (* function call *)
   | Call of string * expr list
 
@@ -23,97 +36,201 @@ type unit_prop =
   (* Abstract Unit *)
   | AUnit of string list
 
-type unit_def = {
-  uname: string;
-  prop: unit_prop
-}
+(* unit_def: (name, unit_prop) *)
+type unit_def = string * unit_prop
 
 type vtype_def = string * typ list
 
-type stmt =
-    Block of stmt list
-  | Expr of expr
-  | If of expr * stmt * stmt
-  | While of expr * stmt
-  (* return *)
-  | Return of expr
 
-(* int x: name binding *)
-type bind = typ * string
+type simple_stmt = 
+    ExprS of expr
+  (* | IncS of expr * uop
+  | Assignment of expr list * aop * expr list *)
+
+type stmt = 
+    (* DeclS of decl *)
+  | LabelS of string * stmt
+  | SimpleS of simple_stmt
+  | ReturnS of expr list
+  | Block of stmt list
+  | IfS of simple_stmt option * expr * stmt * stmt option
+  | SwitchS of simple_stmt option * expr option * switch_case list
+  | MatchS of simple_stmt option * string * expr * match_clause list
+  | ForS of ftype * stmt
+  | LoopS of loop_ctrl_stmt
+  | FallS of int
+
+and loop_ctrl_stmt = 
+    BreakS of string option
+  | ContinueS of string option
+
+and switch_case = 
+  CaseS of expr list * stmt list
+
+and match_clause = 
+  MatchC of typ option * stmt list
+
+and ftype = 
+    Condition of expr
+  | FClause of stmt option * expr option * simple_stmt option
+  | RClause of string * expr
+
+
+(* int x [m][s -2]: name binding *)
+type bind = typ * string * unit_expr
 
 (* func_def: ret_typ fname formals locals body *)
 type func_def = {
-  rtyp: typ;
+  rtyp: typ * unit_expr;
   fname: string;
   formals: bind list;
   locals: bind list;
   body: stmt list;
 }
 
+(* program = (global;s, units, vartypes, functions) *)
 type program = bind list * unit_def list * vtype_def list * func_def list
 
 (* Pretty-printing functions *)
 let string_of_bop = function
     Add -> "+"
   | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+  | Pow -> "^"
+  | Mod -> "%"
   | Equal -> "=="
+  | Geq -> ">="
   | Neq -> "!="
+  | Leq -> "<="
+  | Great -> ">"
   | Less -> "<"
   | And -> "&&"
   | Or -> "||"
 
+  
+let string_of_unit_term (name, exp) = "[" ^ name ^ " " ^ string_of_int exp ^ "]"
+
+let string_of_unit_expr uexpr = String.concat "" (List.map string_of_unit_term uexpr)
+
+let string_of_uop = function
+    Inc -> "++"
+  | Dec -> "--"
+  | Not -> "!"
+  | Neg -> "-"
+
 let rec string_of_expr = function
-    IntLit(l) -> string_of_int l
+    IntLit(l, u) -> string_of_int l ^ string_of_unit_expr u
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
-  | FloatLit(l) -> string_of_float l
+  | FloatLit(l, u) -> string_of_float l ^ string_of_unit_expr u
   | CharLit(l) -> String.make 1 l
   | StrLit(l) -> l
   | Id(s) -> s
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_expr e2
+  | Unaop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Paren(e) ->  "(" ^ string_of_expr e ^ ")"
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
-let rec string_of_stmt = function
-    Block(stmts) ->
-    "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
-  | Expr(expr) -> string_of_expr expr ^ ";\n"
-  | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n"
-  | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
-                      string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
-  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
-let string_of_typ = function
+let rec string_of_stmt = function
+    LabelS(label, stmt) -> label ^ string_of_stmt stmt
+  | SimpleS(stmt) ->
+    begin
+      match stmt with
+      | ExprS(expr) -> string_of_expr expr ^ "\n"
+    end
+  | Block(stmts) ->
+    "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
+  | ReturnS(expr) -> 
+    begin
+      match expr with
+      | [] -> "return\n"
+      | ex -> "return " ^ String.concat "" (List.map string_of_expr ex) ^ "\n"
+    end
+  | IfS(sstmt, expr, stmt, stmt2) -> 
+    let ss = match sstmt with None -> "" | Some v -> string_of_stmt (SimpleS(v)) ^ ";" in
+    let blk = string_of_stmt stmt in
+    let el = match stmt2 with None -> "" | Some v -> "else\n" ^ string_of_stmt v in
+    "if (" ^ ss ^ string_of_expr expr ^ ")\n" ^ blk ^ el
+  | SwitchS(sstmt, expr, sclist) ->
+    let ss = match sstmt with None -> "" | Some v -> string_of_stmt (SimpleS(v)) ^ ";" in
+    let ex = match expr with None -> "" | Some v -> string_of_expr (v) in
+    "switch (" ^ ss ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_switch_case sclist) ^ "}\n"
+  | MatchS(sstmt, id, expr, mclist) -> 
+    let ss = match sstmt with None -> "" | Some v -> string_of_stmt (SimpleS(v)) ^ ";" in
+    let ex = string_of_expr expr in
+    "match (" ^ ss ^ id ^ ":=" ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_match_case mclist) ^ "}\n"
+  | ForS(ftype, stmt) -> 
+    let f = 
+      begin
+      match ftype with
+      | Condition(c) -> string_of_expr c
+      | FClause(stmt, expr, sstmt) -> 
+        let s = match stmt with None -> ";" | Some v -> string_of_stmt (v) ^ ";\n" in
+        let e = match expr with None -> ";" | Some v -> string_of_expr (v) ^ "\n;\n" in
+        let ss = match sstmt with None -> "" | Some v -> string_of_stmt (SimpleS(v)) in
+        s ^ e ^ ss
+      | RClause(id, expr) -> id ^ ";" ^ string_of_expr expr 
+      end in
+    "for (\n" ^ f ^ ")\n" ^ string_of_stmt stmt
+  | LoopS(stmt) -> 
+    begin
+      match stmt with
+      | BreakS(b) -> (match b with None -> "break\n" | Some v -> "break " ^ v)
+      | ContinueS(c) -> (match c with None -> "continue\n" | Some v -> "continue " ^ v)
+    end
+  | FallS(_) -> "fallthrough\n"
+
+and string_of_switch_case = function
+    CaseS([], stmts) -> "default:\n" ^ String.concat "" (List.map string_of_stmt stmts)
+  | CaseS(exprs, stmts) -> "case " ^ String.concat "" (List.map string_of_expr exprs) ^ 
+    ":\n" ^ String.concat "" (List.map string_of_stmt stmts)
+
+and string_of_match_case = function
+    MatchC(None, stmts) -> "default:\n" ^ String.concat "" (List.map string_of_stmt stmts)
+  | MatchC(Some t, stmts) -> "case " ^ string_of_typ t ^ 
+    ":\n" ^ String.concat "" (List.map string_of_stmt stmts)
+
+
+and string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
   | Float -> "float"
   | Char -> "char"
   | Str -> "string"
 
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_bind ((t, id, units):bind) =
+  string_of_typ t ^ " " ^ id ^ " " ^ String.concat "" (List.map string_of_unit_term units)
 
-let string_of_fdecl fdecl =
-  string_of_typ fdecl.rtyp ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+let string_of_vdecl (bnd:bind) =
+  string_of_bind bnd ^ ";\n"
+
+let string_of_rtyp (rtyp:typ*unit_expr) = string_of_typ (fst rtyp) ^ " " ^ string_of_unit_expr (snd rtyp)
+
+let string_of_fdecl (fdecl:func_def) =
+  string_of_rtyp fdecl.rtyp ^ " " ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.formals) ^
   ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_udecl udecl =
-  "unit " ^ udecl.uname ^ " {\n" ^
-  (match udecl.prop with
+let string_of_udecl (udecl:unit_def) =
+  "unit " ^ fst udecl ^ " {\n" ^
+  (match snd udecl with
   | BaseUnit -> ""
   | CUnit (e, id) -> (string_of_expr e) ^ " " ^ id ^ "\n"
   | AUnit ids -> String.concat " | " ids ^ "\n")
   ^ "}\n"
 
-let string_of_vtype vtype = 
+let string_of_vtype (vtype:vtype_def) = 
   "vartype " ^ (fst vtype) ^ " {\n" ^ String.concat " | " (List.map string_of_typ (snd vtype)) ^ "\n}\n"
 
-let string_of_program (vars, units, vtypes, funcs) =
+let string_of_program ((vars, units, vtypes, funcs):program) =
   "\n\nParsed program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_udecl units) ^ "\n" ^
