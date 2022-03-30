@@ -28,4 +28,4 @@ let test_parser = "test suite for parser" >::: [
   "1" >:: (fun _ -> assert_equal ([(Int,"a")], [], [], []) test2);
 ]
 
-let _ = run_test_tt_main test_parser
+let _ = run_test_tt_main test_scanner
