@@ -148,14 +148,14 @@ let rec string_of_sstmt = function
   | SFallS(_) -> "fallthrough\n"
 
 and string_of_sswitch_case = function
-    SCaseS([], stmts) -> "default:\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "\n"
-  | SCaseS(exprs, stmts) -> "case " ^ String.concat "" (List.map string_of_sexpr exprs) ^ 
-    ":\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "\n"
+    SCaseS([], stmts) -> "default:\n" ^ String.concat "" (List.map string_of_sstmt stmts)
+  | SCaseS(exprs, stmts) -> "case " ^ String.concat ", " (List.map string_of_sexpr exprs) ^ 
+    ":\n" ^ String.concat "" (List.map string_of_sstmt stmts)
 
 and string_of_smatch_case = function
-    SMatchC(None, stmts) -> "default:\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "\n"
+    SMatchC(None, stmts) -> "default:\n" ^ String.concat "" (List.map string_of_sstmt stmts)
   | SMatchC(Some t, stmts) -> "case " ^ string_of_typ t ^ 
-    ":\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "\n"
+    ":\n" ^ String.concat "" (List.map string_of_sstmt stmts)
 
 
 and string_of_sfdecl (fdecl:sfunc_def) =

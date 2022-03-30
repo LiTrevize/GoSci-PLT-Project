@@ -186,14 +186,14 @@ let rec string_of_stmt = function
   | FallS(_) -> "fallthrough\n"
 
 and string_of_switch_case = function
-    CaseS([], stmts) -> "default:\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
+    CaseS([], stmts) -> "default:\n" ^ String.concat "" (List.map string_of_stmt stmts)
   | CaseS(exprs, stmts) -> "case " ^ String.concat "" (List.map string_of_expr exprs) ^ 
-    ":\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
+    ":\n" ^ String.concat "" (List.map string_of_stmt stmts)
 
 and string_of_match_case = function
-    MatchC(None, stmts) -> "default:\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
+    MatchC(None, stmts) -> "default:\n" ^ String.concat "" (List.map string_of_stmt stmts)
   | MatchC(Some t, stmts) -> "case " ^ string_of_typ t ^ 
-    ":\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\n"
+    ":\n" ^ String.concat "" (List.map string_of_stmt stmts)
 
 
 and string_of_typ = function
