@@ -9,10 +9,6 @@ unit km {
   1000 m
 }
 
-unit L {
-  m | km
-}
-
 vartype Num {
   int | float
 }
