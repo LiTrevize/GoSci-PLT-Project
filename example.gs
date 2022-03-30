@@ -41,12 +41,11 @@ int main() {
   t = -b;
   t = 2.9 * 5.8 ^ 2 / 1.0;
 
-  /* unit auto convertion
-     [s 2] = [s] ^ 2
-     [m][s -2] = [m][s -1] / [s]
-   */
-  t ^ 2;
+  /* unit auto checking and conversion */
   acc = vel / t;
+  t ^ 3;  /* [s 3] */
+  acc * vel;  /* [m 2][s -3] */
+  acc / acc;  /* [] */
   
   c = 'c';
   s = "helloworld";

@@ -56,11 +56,25 @@ let check ((globals, units, vtypes, functions):program) =
     else raise (Failure ((string_of_unit_expr u2) ^ " cannot be converted to " ^ (string_of_unit_expr u1)))
   in
 
-  let rec unit_simplify u =
-    match u with
-      [] -> []
-    | hd :: sd :: tl when (fst hd) = (fst sd) -> unit_simplify ((fst hd, (snd hd) + (snd sd)) :: tl)
-    | hd :: tl -> hd :: (unit_simplify tl)
+  let unit_simplify u =
+    let update m item = 
+      let old = 
+        try StringMap.find (fst item) m
+        with Not_found -> 0
+      in
+      StringMap.add (fst item) (old + (snd item)) m
+    in
+    let m = List.fold_left update StringMap.empty u in
+    let fold_unit (lst, m) item = 
+      if not (StringMap.mem (fst item) m) then (lst, m)
+      else
+        let n = StringMap.find (fst item) m in
+        if n = 0 then (lst, StringMap.remove (fst item) m)
+        else
+          let newlst = (fst item, n) :: lst in
+          (newlst, StringMap.remove (fst item) m)
+    in
+    List.rev (fst (List.fold_left fold_unit ([], m) u))
   in
 
   (* Collect function declarations for built-in functions: no bodies *)
