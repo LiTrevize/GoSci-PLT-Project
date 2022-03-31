@@ -24,10 +24,29 @@ let check ((globals, units, vtypes, functions):program) =
 
   (* Make sure no globals duplicate *)
   let _ = check_binds "global" globals in
-
+  (* Create user type table *)
+  let add_type tuple = function
+  | VarType(name, type_list) -> (StringMap.add name type_list (fst tuple), snd tuple)
+  | StructType(name, bind_list) -> (fst tuple, StringMap.add name bind_list (snd tuple))
+  | _ -> tuple
+  in
+  let global_type_tuple =  
+    List.fold_left add_type (StringMap.empty, StringMap.empty) vtypes
+  in
+  let global_vartypes = fst global_type_tuple
+  in
+  let global_structs = snd global_type_tuple
+  in
   (* Create global variable symbol table *)
-  let global_vars = List.fold_left (fun m (ty, name, uexpr) -> StringMap.add name (ty,uexpr) m) StringMap.empty globals in
-
+  let check_usertyped_var type_name =
+    if  not (StringMap.mem type_name global_vartypes) && not (StringMap.mem type_name global_structs) then raise (Failure ("Type name (" ^ type_name ^ ")" ^ " is not defiend!" ))
+  in
+  let add_var m = function 
+  | (UserType(type_name) as ty, name, uexpr) -> check_usertyped_var(type_name); StringMap.add name (ty,uexpr) m
+  | (ty, name, uexpr) -> StringMap.add name (ty,uexpr) m
+  in
+  let global_vars = List.fold_left add_var StringMap.empty globals 
+  in
   let type_of_identifier s m =
     try fst (StringMap.find s m)
     with Not_found -> raise (Failure ("undeclared identifier " ^ s))
@@ -89,8 +108,7 @@ let check ((globals, units, vtypes, functions):program) =
 
 
     (* Build local symbol table of variables for this function *)
-    let symbols = List.fold_left (fun m (ty, name, uexpr) -> StringMap.add name (ty, uexpr) m)
-        StringMap.empty (globals @ func.formals @ func.locals )
+    let symbols = List.fold_left add_var StringMap.empty (globals @ func.formals @ func.locals )
     in
 
     (* Return a variable from our local symbol table *)

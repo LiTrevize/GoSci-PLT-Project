@@ -6,7 +6,7 @@ type uop = Inc | Dec
 
 type aop = As | Pas | Mias | Das | Muas
 
-type typ = Int | Bool | Float | Char | Str
+type typ = Int | Bool | Float | Char | Str | UserType of string
 
 (*
   unit term: (unit_name, power)
@@ -95,7 +95,7 @@ VarType of string * typ list
 | ArrType of string * shapeList
 
 
-(* program = (global;s, units, vartypes, functions, types) *)
+(* program = (globals, units, vartypes, functions) *)
 type program = bind list * unit_def list * vtype_def list * func_def list
 
 (* Pretty-printing functions *)
@@ -200,6 +200,7 @@ let string_of_typ = function
   | Float -> "float"
   | Char -> "char"
   | Str -> "string"
+  | UserType(type_name) -> "UserType(" ^ type_name ^")" 
 
 let string_of_bind ((t, id, units):bind) =
   string_of_typ t ^ " " ^ id ^ " " ^ String.concat "" (List.map string_of_unit_term units)

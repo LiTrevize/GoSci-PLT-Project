@@ -58,6 +58,7 @@ typ:
   | FLOAT  { Float  }
   | CHAR   { Char   }
   | STRING { Str }
+  | ID     { UserType($1) }
 
 unit_expr_opt:
   /*nothing*/                                  { [] }
@@ -96,15 +97,20 @@ vtdecl:
   | typ shape_list ID { ArrType($3, $2) }
 
 /* fdecl */
+return_typ:
+   typ ID unit_expr_opt { ($1, $3) }
+  | typ unit_expr_opt { ($1, $2) }
+  
 fdecl:
-  vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list statement_list RBRACE
+  // vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list statement_list RBRACE
+  FUNC ID LPAREN formals_opt RPAREN return_typ LBRACE vdecl_list statement_list RBRACE
   {
     {
-      rtyp=(match $1 with (t, i, u) -> (t, u));
-      fname=(match $1 with (t, i, u) -> i);
-      formals=$3;
-      locals=$6;
-      body=$7
+      rtyp=$6;
+      fname=$2;
+      formals=$4;
+      locals=$8;
+      body=$9
     }
   }
 

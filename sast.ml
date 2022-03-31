@@ -169,10 +169,10 @@ let string_of_sudecl (udecl:sunit_def) =
 
 let string_of_svtype (vtype:svtype_def) = 
   match vtype with 
-  | SVarType (name, type_list) -> "vartype " ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_typ type_list) ^ "\n}\n"
-  | SStructType(name, bind_list) -> "structtype" ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_bind bind_list) ^ "\n}\n"
-  | STensorType(name, shape_list) -> "tensorType" ^ string_of_shape shape_list ^ name ^ "\n"
-  | SArrType(name, shape_list) -> "arrType" ^ string_of_shape shape_list ^ name ^ "\n"
+  | SVarType (name, type_list) -> "VarType " ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_typ type_list) ^ "\n}\n"
+  | SStructType(name, bind_list) -> "StructType(" ^ name ^ ") {\n" ^ String.concat " | " (List.map string_of_bind bind_list) ^ "\n}\n"
+  | STensorType(name, shape_list) -> "TensorType" ^ string_of_shape shape_list ^ name ^ "\n"
+  | SArrType(name, shape_list) -> "ArrType" ^ string_of_shape shape_list ^ name ^ "\n"
 
 
 let string_of_sprogram ((vars, units, vtypes, funcs):sprogram) =
