@@ -17,21 +17,15 @@ vartype Num {
   int | float
 }
 
-int gcd(int a, int b) {
-  while (a != b) {
-    if (b < a) a = a - b;
-    else b = b - a;
-  }
+func gcd(int a, int b) int {
+
   return a;
 }
 
-int max(int a, int b) {
-  if (a < b) return b;
-  else return a;
+func max(int a, int b) int {
 }
 
-int main() {
-  struct A {};
+func main() int {
 
   int x;
   float z [s];
@@ -43,7 +37,5 @@ int main() {
   z = 2.9 + 5.8;
   c = 'c';
   s = "abc";
-  print(gcd(3,15));
-  print(gcd(a,x));
   return 0;
 }
