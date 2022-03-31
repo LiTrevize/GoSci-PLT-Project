@@ -61,7 +61,7 @@ typ:
   | FLOAT  { Float  }
   | CHAR   { Char   }
   | STRING { Str }
-  | ID     { UserType($1) }
+  // | ID     { UserType($1) }
 
 unit_expr_opt:
   /*nothing*/                                  { [] }
