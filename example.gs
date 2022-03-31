@@ -13,7 +13,7 @@ vartype Num {
   int | float
 }
 
-int gcd(int a, int b) {
+func gcd(int a, int b) int {
   for (a != b) {
     if (b < a) {
       a = a - b;
@@ -24,8 +24,8 @@ int gcd(int a, int b) {
   return a;
 }
 
-int main() {
-  struct A {};
+func main() int{
+
 
   int a;
   float b;
