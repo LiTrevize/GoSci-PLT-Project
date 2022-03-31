@@ -13,6 +13,11 @@ vartype Num {
   int | float
 }
 
+struct Person {
+  string name;
+  int age;
+}
+
 func gcd(int a, int b) int {
   for (a != b) {
     if (b < a) {
