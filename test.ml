@@ -21,11 +21,11 @@ let (test_cases_parser : (string * (string * program)) list) = [
   ("global variable declaration with unit", ("float vel [m 1][s -1];",([(Float, "vel",[("m",1);("s",-1)])],[],[],[])));
   ("empty unit",("unit U {}", ([],[("U",BaseUnit)],[],[])));
   ("Non-empty unit",("unit km { 1000 m}", ([],[("km", CUnit(IntLit(1000,[]),"m"))],[],[])));
-  ("Vartype declaration",("vartype Num {int | float}",([],[],[("Num",[Int;Float])],[])));
+  ("Vartype declaration",("vartype Num {int | float}",([],[],[VarType("Num",[Int;Float])],[])));
 ];;
 
 let (test_cases_checker : (string * (string * sprogram)) list) = [
-  ("global variable declaration", ("int a; int main(){}", ([(Int, "a", [])], [], [], [empty_main])));
+  ("global variable declaration", ("int a; func main() int {}", ([(Int, "a", [])], [], [], [empty_main])));
 ];;
 
 let test_compiler =
