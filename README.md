@@ -47,5 +47,5 @@ Scan, parse, then semantic check
 ### Other files
 
 - `main.ml`: top-level file to test and run the compiler
-- `example.mc`: a sample GoSci source code
+- `example.gs`: a sample GoSci source code
 - `test.ml`: all test cases

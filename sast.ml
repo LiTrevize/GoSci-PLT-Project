@@ -11,6 +11,7 @@ and sx =
   | SStrLit of string
   | SId of string
   | SBinop of sexpr * bop * sexpr
+  | SUnaop of uop * sexpr
   | SAssign of string * sexpr
   (* call *)
   | SCall of string * sexpr list
@@ -18,8 +19,8 @@ and sx =
 
 type ssimple_stmt = 
     SExprS of sexpr
-  | SIncS of sexpr * uop
-  | SAssignment of sexpr list * aop * sexpr list
+  (* | SIncS of sexpr * uop
+  | SAssignment of sexpr list * aop * sexpr list *)
 
 type sstmt = 
     SLabelS of string * sstmt
@@ -28,7 +29,7 @@ type sstmt =
   | SBlock of sstmt list
   | SIfS of ssimple_stmt option * sexpr * sstmt * sstmt option
   | SSwitchS of ssimple_stmt option * sexpr option * sswitch_case list
-  (* | SMatchS of ssimple_stmt option * string * sexpr * smatch_clause list *)
+  | SMatchS of ssimple_stmt option * string * sexpr * smatch_clause list
   | SForS of sftype * sstmt
   | SLoopS of sloop_ctrl_stmt
   | SFallS of int
@@ -41,7 +42,7 @@ and sswitch_case =
   SCaseS of sexpr list * sstmt list
 
 and smatch_clause = 
-  SMatchC of typ list * sstmt list
+  SMatchC of typ option * sstmt list
 
 and sftype = 
     SCondition of sexpr
@@ -89,6 +90,7 @@ let rec string_of_sexpr (((t, u), e):sexpr) =
       | SId(s) -> s
       | SBinop(e1, o, e2) ->
         string_of_sexpr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_sexpr e2
+      | SUnaop(o, e) -> string_of_uop o ^ " " ^ string_of_sexpr e
       | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
       | SCall(f, el) ->
           f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
@@ -102,10 +104,10 @@ let rec string_of_sstmt = function
     begin
       match stmt with
       | SExprS(expr) -> string_of_sexpr expr ^ "\n"
-      | SIncS(expr, uop) -> string_of_sexpr expr ^ string_of_uop uop ^ "\n"
+      (* | SIncS(expr, uop) -> string_of_sexpr expr ^ string_of_uop uop ^ "\n"
       | SAssignment(exprs1, aop, exprs2) ->
         String.concat "" (List.map string_of_sexpr exprs1) ^ string_of_aop aop ^
-        String.concat "" (List.map string_of_sexpr exprs2) ^ "\n"
+        String.concat "" (List.map string_of_sexpr exprs2) ^ "\n" *)
     end
   | SBlock(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
@@ -117,41 +119,50 @@ let rec string_of_sstmt = function
     end
   | SIfS(sim, expr, stmt, stmt2) -> 
     let ss = match sim with None -> "" | Some v -> string_of_sstmt (SSimpleS(v)) ^ ";" in
-    let el = match stmt2 with None -> "" | Some v -> "else" ^ string_of_sstmt v in
-    "if (" ^ ss ^ string_of_sexpr expr ^ ")\n" ^ el
+    let blk = string_of_sstmt stmt in
+    let el = match stmt2 with None -> "" | Some v -> "else\n" ^ string_of_sstmt v in
+    "if (" ^ ss ^ string_of_sexpr expr ^ ")\n" ^ blk ^ el
   | SSwitchS(sim, expr, sclist) ->
     let ss = match sim with None -> "" | Some v -> string_of_sstmt (SSimpleS(v)) ^ ";" in
     let ex = match expr with None -> "" | Some v -> string_of_sexpr v in
-    "switch (" ^ ss ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_sswitch_case sclist) ^ "\n}\n"
+    "switch (" ^ ss ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_sswitch_case sclist) ^ "}\n"
+  | SMatchS(sim, id, expr, mclist) -> 
+    let ss = match sim with None -> "" | Some v -> string_of_sstmt (SSimpleS(v)) ^ ";" in
+    let ex = string_of_sexpr expr in
+    "match (" ^ ss ^ id ^ ":=" ^ ex ^ ")\n{\n" ^ String.concat "" (List.map string_of_smatch_case mclist) ^ "}\n"  
   | SForS(ftype, stmt) -> 
     let f = 
       begin
       match ftype with
       | SCondition(c) -> string_of_sexpr c
       | SFClause(stmt, expr, sstmt) -> 
-        let s = (match stmt with None -> ";" | Some v -> string_of_sstmt v ^ ";") in
-        let e = (match expr with None -> ";" | Some v -> string_of_sexpr v ^ ";") in
+        let s = (match stmt with None -> ";" | Some v -> string_of_sstmt v ^ ";\n") in
+        let e = (match expr with None -> ";" | Some v -> string_of_sexpr v ^ "\n;\n") in
         let ss = (match sstmt with None -> "" | Some v -> string_of_sstmt (SSimpleS(v))) in
         s ^ e ^ ss
       | SRClause(id, expr) -> id ^ ";" ^ string_of_sexpr expr 
       end in
-    "for (" ^ f ^ ")\n" ^ string_of_sstmt stmt
+    "for (\n" ^ f ^ ")\n" ^ string_of_sstmt stmt
   | SLoopS(stmt) -> 
     begin
       match stmt with
       | SBreakS(b) -> (match b with None -> "break\n" | Some v -> "break " ^ v)
       | SContinueS(c) -> (match c with None -> "continue\n" | Some v -> "continue " ^ v)
     end
-  (* | SMatchS(sstmt, id, expr, mclist) -> "Not implemented.\n" *)
   | SFallS(_) -> "fallthrough\n"
 
 and string_of_sswitch_case = function
-    SCaseS([], stmts) -> "default:\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "\n"
-  | SCaseS(exprs, stmts) -> "case " ^ String.concat "" (List.map string_of_sexpr exprs) ^ 
-    ":\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "\n"
+    SCaseS([], stmts) -> "default:\n" ^ String.concat "" (List.map string_of_sstmt stmts)
+  | SCaseS(exprs, stmts) -> "case " ^ String.concat ", " (List.map string_of_sexpr exprs) ^ 
+    ":\n" ^ String.concat "" (List.map string_of_sstmt stmts)
+
+and string_of_smatch_case = function
+    SMatchC(None, stmts) -> "default:\n" ^ String.concat "" (List.map string_of_sstmt stmts)
+  | SMatchC(Some t, stmts) -> "case " ^ string_of_typ t ^ 
+    ":\n" ^ String.concat "" (List.map string_of_sstmt stmts)
 
 
-let string_of_sfdecl (fdecl:sfunc_def) =
+and string_of_sfdecl (fdecl:sfunc_def) =
   string_of_rtyp fdecl.srtyp ^ " " ^
   fdecl.sfname ^ "(" ^ String.concat ", " (List.map string_of_bind fdecl.sformals) ^
   ")\n{\n" ^

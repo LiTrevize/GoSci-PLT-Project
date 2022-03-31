@@ -35,7 +35,10 @@ rule token = parse
 | '='      { ASSIGN }
 | ":="     { IASSIGN }
 | "=="     { EQ }
+| ">="     { GEQ }
 | "!="     { NEQ }
+| "<="     { LEQ }
+| '>'      { GT }
 | '<'      { LT }
 | '!'      { NOT }
 | "&&"     { AND }
