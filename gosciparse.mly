@@ -33,7 +33,7 @@ open Ast
 %left PLUS MINUS
 %left MUL DIV MOD
 %left POW
-%right NOT
+%right NOT Neg Inc Dec
 
 %%
 
@@ -89,7 +89,6 @@ type_list:
   | typ VERBAR type_list  { $1 :: $3 }
 
 shape_list:
-  /*nothing*/ {[]}
   | LBRACK ILIT RBRACK shape_list { $2::$4 }
 
 vtdecl:
@@ -334,8 +333,8 @@ expr:
   | expr OR     expr    { Binop($1, Or,    $3)   }
   | NOT    expr         { Unaop(Not,       $2)   }
   | MINUS  expr         { Unaop(Neg,       $2)   }
-  | INC    expr         { Unaop(Inc,       $2)   }
-  | DEC    expr         { Unaop(Dec,       $2)   }
+  // | INC    expr         { Unaop(Inc,       $2)   }
+  // | DEC    expr         { Unaop(Dec,       $2)   }
   | ID ASSIGN expr      { Assign($1,       $3)   }
   | LPAREN expr RPAREN  { Paren(           $2)   }
   /* call */

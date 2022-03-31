@@ -25,8 +25,6 @@ func gcd(int a, int b) int {
 }
 
 func main() int{
-
-
   int a;
   float b;
   char c;
@@ -52,11 +50,9 @@ func main() int{
   c = 'c';
   s = "helloworld";
   flag = (true && (!false)) || false;
-  ++b;
-  --t;
   !flag;
   
-  for (i = 0; i < a; ++i) {
+  for (i = 0; i < a; i=i+1) {
     print(i);
   }
 
