@@ -1,7 +1,7 @@
 /* The GCD algorithm in NanoC */
 /* TODO: change to GoSci */
 int a;
-float b [m][s -1];
+float vel [m][s -1];
 
 unit U {}
 
@@ -9,40 +9,75 @@ unit km {
   1000 m
 }
 
-unit L {
-  m | km
-}
-
 vartype Num {
   int | float
 }
 
 int gcd(int a, int b) {
-  while (a != b) {
-    if (b < a) a = a - b;
-    else b = b - a;
+  for (a != b) {
+    if (b < a) {
+      a = a - b;
+    } else {
+      b = b - a;
+    }
   }
   return a;
-}
-
-int max(int a, int b) {
-  if (a < b) return b;
-  else return a;
 }
 
 int main() {
   struct A {};
 
-  int x;
-  float z [s];
+  int a;
+  float b;
   char c;
   string s;
-  a = 18;
-  b = 2.9;
-  x = 2;
-  z = 2.9 + 5.8;
+  bool flag;
+  int x;
+  int i;
+  float t [s];
+  float acc [m][s -2];
+  
+  a = 10;
+  b = 18.1;
+  x = 2 ^ 3;
+  t = -b;
+  t = 2.9 * 5.8 ^ 2 / 1.0;
+
+  /* unit auto checking and conversion */
+  acc = vel / t;
+  t ^ 3;  /* [s 3] */
+  acc * vel;  /* [m 2][s -3] */
+  acc / acc;  /* [] */
+  
   c = 'c';
-  s = "abc";
+  s = "helloworld";
+  flag = (true && (!false)) || false;
+  ++b;
+  --t;
+  !flag;
+  
+  for (i = 0; i < a; ++i) {
+    print(i);
+  }
+
+  switch (x+1;x) {
+    case 1, 2:
+      return x;
+    case 3:
+      break;
+    default:
+      return x - 1;
+  }
+
+  match (v := c) {
+    case int:
+      return 1;
+    case float:
+      return 2;
+    default:
+      break;
+  }
+
   print(gcd(3,15));
   print(gcd(a,x));
   return 0;
