@@ -25,6 +25,8 @@ int gcd(int a, int b) {
 }
 
 int main() {
+  struct A {};
+
   int a;
   float b;
   char c;

@@ -5,7 +5,7 @@ type bop = Add | Sub | Mul | Div | Pow | Mod | Equal | And | Or
 
 type uop = Inc | Dec | Not | Neg
 
-type typ = Int | Bool | Float | Char | Str
+type typ = Int | Bool | Float | Char | Str | UserType of string
 
 (*
   unit term: (unit_name, power)
@@ -39,7 +39,6 @@ type unit_prop =
 (* unit_def: (name, unit_prop) *)
 type unit_def = string * unit_prop
 
-type vtype_def = string * typ list
 
 
 type simple_stmt = 
@@ -88,7 +87,16 @@ type func_def = {
   body: stmt list;
 }
 
-(* program = (global;s, units, vartypes, functions) *)
+type shapeList = int list
+
+type vtype_def = 
+VarType of string * typ list
+| StructType of string * bind list
+| TensorType of string * shapeList 
+| ArrType of string * shapeList
+
+
+(* program = (globals, units, vartypes, functions) *)
 type program = bind list * unit_def list * vtype_def list * func_def list
 
 (* Pretty-printing functions *)
@@ -202,9 +210,15 @@ and string_of_typ = function
   | Float -> "float"
   | Char -> "char"
   | Str -> "string"
+  | UserType(type_name) -> "UserType(" ^ type_name ^")" 
 
 let string_of_bind ((t, id, units):bind) =
   string_of_typ t ^ " " ^ id ^ " " ^ String.concat "" (List.map string_of_unit_term units)
+let rec string_of_shape  = function
+  [] -> " "
+  | hd::tl -> "[" ^ string_of_int hd ^"]" ^ string_of_shape tl
+
+
 
 let string_of_vdecl (bnd:bind) =
   string_of_bind bnd ^ ";\n"
@@ -228,7 +242,11 @@ let string_of_udecl (udecl:unit_def) =
   ^ "}\n"
 
 let string_of_vtype (vtype:vtype_def) = 
-  "vartype " ^ (fst vtype) ^ " {\n" ^ String.concat " | " (List.map string_of_typ (snd vtype)) ^ "\n}\n"
+  match vtype with 
+  | VarType (name, type_list) -> "vartype " ^ name ^ " {\n" ^ String.concat " | " (List.map string_of_typ type_list) ^ "\n}\n"
+  | StructType(name, bind_list) -> "structType" ^ name ^ " {\n" ^ String.concat " " (List.map string_of_bind bind_list) ^ "\n}\n"
+  | TensorType(name, shape_list) -> "tensorType" ^ string_of_shape shape_list ^ name ^ "\n"
+  | ArrType(name, shape_list) -> "arrType" ^ string_of_shape shape_list ^ name ^ "\n"
 
 let string_of_program ((vars, units, vtypes, funcs):program) =
   "\n\nParsed program: \n\n" ^

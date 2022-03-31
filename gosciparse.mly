@@ -41,7 +41,7 @@ program:
   decls EOF { $1}
 
 decls:
-   /* nothing */    { ([], [], [], [])               }
+   /* nothing */    { ([], [], [], []) }
  | vdecl SEMI decls { match $3 with (v, u, vt, f) -> (($1 :: v), u, vt, f) }
  | udecl decls      { match $2 with (v, u, vt, f) -> (v, ($1 :: u), vt, f) }
  | vtdecl decls     { match $2 with (v, u, vt, f) -> (v, u, ($1 :: vt), f) }
@@ -61,6 +61,7 @@ typ:
   | FLOAT  { Float  }
   | CHAR   { Char   }
   | STRING { Str }
+  | ID     { UserType($1) }
 
 unit_expr_opt:
   /*nothing*/                                  { [] }
@@ -87,19 +88,32 @@ type_list:
     typ  { [$1] }
   | typ VERBAR type_list  { $1 :: $3 }
 
+shape_list:
+  /*nothing*/ {[]}
+  | LBRACK ILIT RBRACK shape_list { $2::$4 }
+
 vtdecl:
-    VARTYPE ID LBRACE type_list RBRACE  { ($2, $4) }
+    VARTYPE ID LBRACE type_list RBRACE  { VarType($2, $4) }
+  | STRUCT ID LBRACE vdecl_list RBRACE { StructType($2, $4) }
+  | TENSOR INT shape_list ID {TensorType($4, $3)}
+  | TENSOR FLOAT shape_list ID {TensorType($4, $3)}
+  | typ shape_list ID { ArrType($3, $2) }
 
 /* fdecl */
+return_typ:
+   typ ID unit_expr_opt { ($1, $3) }
+  | typ unit_expr_opt { ($1, $2) }
+  
 fdecl:
-  vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list statement_list RBRACE
+  // vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list statement_list RBRACE
+  FUNC ID LPAREN formals_opt RPAREN return_typ LBRACE vdecl_list statement_list RBRACE
   {
     {
-      rtyp=(match $1 with (t, i, u) -> (t, u));
-      fname=(match $1 with (t, i, u) -> i);
-      formals=$3;
-      locals=$6;
-      body=$7
+      rtyp=$6;
+      fname=$2;
+      formals=$4;
+      locals=$8;
+      body=$9
     }
   }
 
