@@ -15,7 +15,8 @@ open Ast
 %token <float> FLIT
 %token <char> CLIT
 %token <string> SLIT
-%token <string> ID
+%token <string> LID
+%token <string> UID
 %token EOF
 
 /* For parsing */
@@ -51,9 +52,13 @@ vdecl_list:
   /*nothing*/ { [] }
   | vdecl SEMI vdecl_list  {  $1 :: $3 }
 
+ID:
+  | UID {$1}
+  | LID {$1}
+
 /* int x */
 vdecl:
-  typ ID unit_expr_opt { ($1, $2, $3) }
+  typ LID unit_expr_opt { ($1, $2, $3) }
 
 typ:
     INT    { Int    }
@@ -61,7 +66,7 @@ typ:
   | FLOAT  { Float  }
   | CHAR   { Char   }
   | STRING { Str }
-  // | ID     { UserType($1) }
+  | UID     { UserType($1) }
 
 unit_expr_opt:
   /*nothing*/                                  { [] }
@@ -191,7 +196,7 @@ labeled_stmt:
 
 
 label:
-    ID { $1 }
+    LID { $1 }
 
 
 // empty_stmt:
@@ -317,7 +322,7 @@ expr:
   | FLIT unit_expr_opt  { FloatLit($1, $2)       }
   | CLIT                { CharLit($1)            }
   | SLIT                { StrLit($1)             }
-  | ID                  { Id($1)                 }
+  | LID                  { Id($1)                 }
   | expr PLUS   expr    { Binop($1, Add,   $3)   }
   | expr MINUS  expr    { Binop($1, Sub,   $3)   }
   | expr MUL    expr    { Binop($1, Mul,   $3)   }
@@ -336,10 +341,10 @@ expr:
   | MINUS  expr         { Unaop(Neg,       $2)   }
   // | INC    expr         { Unaop(Inc,       $2)   }
   // | DEC    expr         { Unaop(Dec,       $2)   }
-  | ID ASSIGN expr      { Assign($1,       $3)   }
+  | LID ASSIGN expr      { Assign($1,       $3)   }
   | LPAREN expr RPAREN  { Paren(           $2)   }
   /* call */
-  | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
+  | LID LPAREN args_opt RPAREN { Call ($1, $3)  }
 
 /* args_opt*/
 args_opt:
@@ -423,4 +428,5 @@ one_token:
   | FLIT    { "FLOAT(" ^ string_of_float $1 ^ ")" }
   | CLIT    { "CHAR(" ^ String.make 1 $1 ^ ")" }
   | SLIT    { "STRING(" ^ $1 ^ ")" }
-  | ID      { "ID(" ^ $1 ^ ")" }
+  | LID      { "LID(" ^ $1 ^ ")" }
+  | UID      { "UID(" ^ $1 ^ ")" }
