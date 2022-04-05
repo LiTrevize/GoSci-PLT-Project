@@ -4,6 +4,8 @@
 
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z']
+let letter_lower = ['a'-'z']
+let letter_upper = ['A'-'Z']
 let char_lit = digit | letter
 let exp = ('e'|'E') ('+'|'-')? digit+
 let float_lit = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
@@ -76,7 +78,8 @@ rule token = parse
 | float_lit as lem                   { FLIT(float_of_string lem) }
 | '\'' (char_lit? as lem) '\''       { CLIT(lem.[0]) }
 | '\"' (char_lit* as lem) '\"'       { SLIT(lem) }
-| letter (digit | letter)* as lem    { ID(lem) }
+| letter_lower (digit | letter)* as lem    { LID(lem) }
+| letter_upper (digit | letter)* as lem    { UID(lem) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
