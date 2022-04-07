@@ -54,7 +54,7 @@ type sunit_prop =
 
 type sunit_def = string * sunit_prop
 
-type svtype_def =
+type sutype_def =
   | SVarType of string * typ list
   | SStructType of string * bind list
   | STensorType of string * shapeList
@@ -69,7 +69,7 @@ type sfunc_def =
   ; sbody : sstmt list
   }
 
-type sprogram = bind list * sunit_def list * svtype_def list * sfunc_def list
+type sprogram = bind list * sunit_def list * sutype_def list * sfunc_def list
 
 (* Pretty-printing functions *)
 let rec string_of_sexpr (((t, u), e) : sexpr) =
@@ -226,8 +226,8 @@ let string_of_sudecl (udecl : sunit_def) =
   ^ "}\n"
 ;;
 
-let string_of_svtype (vtype : svtype_def) =
-  match vtype with
+let string_of_sutype (utype : sutype_def) =
+  match utype with
   | SVarType (name, type_list) ->
     "VarType "
     ^ name
@@ -245,13 +245,13 @@ let string_of_svtype (vtype : svtype_def) =
   | SArrType (name, shape_list) -> "ArrType" ^ string_of_shape shape_list ^ name ^ "\n"
 ;;
 
-let string_of_sprogram ((vars, units, vtypes, funcs) : sprogram) =
+let string_of_sprogram ((vars, units, utypes, funcs) : sprogram) =
   "\n\nSementically checked program: \n\n"
   ^ String.concat "" (List.map string_of_vdecl vars)
   ^ "\n"
   ^ String.concat "\n" (List.map string_of_sudecl units)
   ^ "\n"
-  ^ String.concat "\n" (List.map string_of_svtype vtypes)
+  ^ String.concat "\n" (List.map string_of_sutype utypes)
   ^ "\n"
   ^ String.concat "\n" (List.map string_of_sfdecl funcs)
 ;;

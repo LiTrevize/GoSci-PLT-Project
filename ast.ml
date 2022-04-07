@@ -103,14 +103,14 @@ type func_def =
 
 type shapeList = int list
 
-type vtype_def =
+type utype_def =
   | VarType of string * typ list
   | StructType of string * bind list
   | TensorType of string * shapeList
   | ArrType of string * shapeList
 
 (* program = (globals, units, vartypes, functions) *)
-type program = bind list * unit_def list * vtype_def list * func_def list
+type program = bind list * unit_def list * utype_def list * func_def list
 
 (* Pretty-printing functions *)
 let string_of_bop = function
@@ -308,8 +308,8 @@ let string_of_udecl (udecl : unit_def) =
   ^ "}\n"
 ;;
 
-let string_of_vtype (vtype : vtype_def) =
-  match vtype with
+let string_of_utype (utype : utype_def) =
+  match utype with
   | VarType (name, type_list) ->
     "vartype "
     ^ name
@@ -327,13 +327,13 @@ let string_of_vtype (vtype : vtype_def) =
   | ArrType (name, shape_list) -> "arrType" ^ string_of_shape shape_list ^ name ^ "\n"
 ;;
 
-let string_of_program ((vars, units, vtypes, funcs) : program) =
+let string_of_program ((vars, units, utypes, funcs) : program) =
   "\n\nParsed program: \n\n"
   ^ String.concat "" (List.map string_of_vdecl vars)
   ^ "\n"
   ^ String.concat "\n" (List.map string_of_udecl units)
   ^ "\n"
-  ^ String.concat "\n" (List.map string_of_vtype vtypes)
+  ^ String.concat "\n" (List.map string_of_utype utypes)
   ^ "\n"
   ^ String.concat "\n" (List.map string_of_fdecl funcs)
 ;;

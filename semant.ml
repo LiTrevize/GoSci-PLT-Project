@@ -9,7 +9,7 @@ module StringMap = Map.Make (String)
 
    Check each global variable, then check each function *)
 
-let check ((globals, units, vtypes, functions) : program) =
+let check ((globals, units, utypes, functions) : program) =
   (* Verify a list of bindings has no duplicate names *)
   let check_binds (kind : string) (binds : (typ * string * unit_expr) list) =
     let rec dups = function
@@ -29,7 +29,7 @@ let check ((globals, units, vtypes, functions) : program) =
     | _ -> tuple
   in
   let global_type_tuple =
-    List.fold_left add_type (StringMap.empty, StringMap.empty) vtypes
+    List.fold_left add_type (StringMap.empty, StringMap.empty) utypes
   in
   let global_vartypes = fst global_type_tuple in
   let global_structs = snd global_type_tuple in
@@ -505,7 +505,7 @@ let check ((globals, units, vtypes, functions) : program) =
     | AUnit l -> fst unt, SAUnit l
     | CUnit (e, id) -> fst unt, SCUnit (check_num_expr e, id)
   in
-  let check_vtype = function
+  let check_utype = function
     | VarType (name, type_list) -> SVarType (name, type_list)
     | StructType (name, bind_list) -> SStructType (name, bind_list)
     | TensorType (name, shape_list) -> STensorType (name, shape_list)
@@ -513,6 +513,6 @@ let check ((globals, units, vtypes, functions) : program) =
   in
   ( globals
   , List.map check_unit units
-  , List.map check_vtype vtypes
+  , List.map check_utype utypes
   , List.map check_func functions )
 ;;
