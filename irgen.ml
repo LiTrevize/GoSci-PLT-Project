@@ -34,7 +34,7 @@ let translate (globals, units, utypes, functions) =
   let ltype_of_typ = function
     | A.Int -> i32_t
     | A.Bool -> i1_t
-    | _ -> raise (Failure "Not Implemented")
+    | _ -> raise (Failure "Type Not Implemented")
   in
   (* Create a map of global variables after creating each *)
   let global_vars : L.llvalue StringMap.t =
@@ -116,7 +116,7 @@ let translate (globals, units, utypes, functions) =
         | A.Equal -> L.build_icmp L.Icmp.Eq
         | A.Neq -> L.build_icmp L.Icmp.Ne
         | A.Less -> L.build_icmp L.Icmp.Slt
-        | _ -> raise (Failure "Not Implemented"))
+        | _ -> raise (Failure "Operator Not Implemented"))
           e1'
           e2'
           "tmp"
@@ -132,7 +132,7 @@ let translate (globals, units, utypes, functions) =
         let llargs = List.rev (List.map (build_expr builder) (List.rev args)) in
         let result = f ^ "_result" in
         L.build_call fdef (Array.of_list llargs) result builder
-      | _ -> raise (Failure "Not Implemented")
+      | _ -> raise (Failure "Expression Not Implemented")
     in
     (* LLVM insists each basic block end with exactly one "terminator"
        instruction that transfers control.  This function runs "instr builder"
@@ -184,8 +184,8 @@ let translate (globals, units, utypes, functions) =
           let end_bb = L.append_block context "while_end" the_function in
           ignore (L.build_cond_br bool_val body_bb end_bb while_builder);
           L.builder_at_end context end_bb
-        | _ -> raise (Failure "Not implemented"))
-      | _ -> raise (Failure "Not Implemented")
+        | _ -> raise (Failure "For type Not implemented"))
+      | _ -> raise (Failure "Statement Not Implemented")
     in
     (* Build the code for each statement in the function *)
     let func_builder = build_stmt builder (SBlock fdecl.sbody) in
