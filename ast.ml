@@ -60,19 +60,19 @@ type unit_prop =
 
 (* unit_def: (name, unit_prop) *)
 type unit_def = string * unit_prop
-type simple_stmt = ExprS of expr
+(* type simple_stmt = ExprS of expr *)
 (* | IncS of expr * uop
    | Assignment of expr list * aop * expr list *)
 
 type stmt =
   (* DeclS of decl *)
   | LabelS of string * stmt
-  | SimpleS of simple_stmt
+  | ExprS of expr
   | ReturnS of expr list
   | Block of stmt list
-  | IfS of simple_stmt option * expr * stmt * stmt option
-  | SwitchS of simple_stmt option * expr option * switch_case list
-  | MatchS of simple_stmt option * string * expr * match_clause list
+  | IfS of expr option * expr * stmt * stmt option
+  | SwitchS of expr option * expr option * switch_case list
+  | MatchS of expr option * string * expr * match_clause list
   | ForS of ftype * stmt
   | LoopS of loop_ctrl_stmt
   | FallS of int
@@ -86,7 +86,7 @@ and match_clause = MatchC of typ option * stmt list
 
 and ftype =
   | Condition of expr
-  | FClause of stmt option * expr option * simple_stmt option
+  | FClause of stmt option * expr option * expr option
   | RClause of string * expr
 
 (* int x [m][s -2]: name binding *)
@@ -158,9 +158,7 @@ let rec string_of_expr = function
 
 let rec string_of_stmt = function
   | LabelS (label, stmt) -> label ^ string_of_stmt stmt
-  | SimpleS stmt ->
-    (match stmt with
-    | ExprS expr -> string_of_expr expr ^ "\n")
+  | ExprS expr -> string_of_expr expr ^ "\n"
   | Block stmts -> "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | ReturnS expr ->
     (match expr with
@@ -170,7 +168,7 @@ let rec string_of_stmt = function
     let ss =
       match sstmt with
       | None -> ""
-      | Some v -> string_of_stmt (SimpleS v) ^ ";"
+      | Some v -> string_of_expr v ^ ";"
     in
     let blk = string_of_stmt stmt in
     let el =
@@ -183,7 +181,7 @@ let rec string_of_stmt = function
     let ss =
       match sstmt with
       | None -> ""
-      | Some v -> string_of_stmt (SimpleS v) ^ ";"
+      | Some v -> string_of_expr v ^ ";"
     in
     let ex =
       match expr with
@@ -200,7 +198,7 @@ let rec string_of_stmt = function
     let ss =
       match sstmt with
       | None -> ""
-      | Some v -> string_of_stmt (SimpleS v) ^ ";"
+      | Some v -> string_of_expr v ^ ";"
     in
     let ex = string_of_expr expr in
     "match ("
@@ -229,7 +227,7 @@ let rec string_of_stmt = function
         let ss =
           match sstmt with
           | None -> ""
-          | Some v -> string_of_stmt (SimpleS v)
+          | Some v -> string_of_expr v
         in
         s ^ e ^ ss
       | RClause (id, expr) -> id ^ ";" ^ string_of_expr expr

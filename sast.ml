@@ -17,18 +17,18 @@ and sx =
   (* call *)
   | SCall of string * sexpr list
 
-type ssimple_stmt = SExprS of sexpr
+(* type ssimple_stmt = SExprS of sexpr *)
 (* | SIncS of sexpr * uop
    | SAssignment of sexpr list * aop * sexpr list *)
 
 type sstmt =
   | SLabelS of string * sstmt
-  | SSimpleS of ssimple_stmt
+  | SExprS of sexpr
   | SReturnS of sexpr list
   | SBlock of sstmt list
-  | SIfS of ssimple_stmt option * sexpr * sstmt * sstmt option
-  | SSwitchS of ssimple_stmt option * sexpr option * sswitch_case list
-  | SMatchS of ssimple_stmt option * string * sexpr * smatch_clause list
+  | SIfS of sexpr option * sexpr * sstmt * sstmt option
+  | SSwitchS of sexpr option * sexpr option * sswitch_case list
+  | SMatchS of sexpr option * string * sexpr * smatch_clause list
   | SForS of sftype * sstmt
   | SLoopS of sloop_ctrl_stmt
   | SFallS of int
@@ -42,7 +42,7 @@ and smatch_clause = SMatchC of typ option * sstmt list
 
 and sftype =
   | SCondition of sexpr
-  | SFClause of sstmt option * sexpr option * ssimple_stmt option
+  | SFClause of sstmt option * sexpr option * sexpr option
   | SRClause of string * sexpr
 
 type sunit_prop =
@@ -95,14 +95,12 @@ let rec string_of_sexpr (((t, u), e) : sexpr) =
 
 let rec string_of_sstmt = function
   | SLabelS (label, stmt) -> label ^ string_of_sstmt stmt
-  | SSimpleS stmt ->
-    (match stmt with
-    | SExprS expr ->
-      string_of_sexpr expr ^ "\n"
-      (* | SIncS(expr, uop) -> string_of_sexpr expr ^ string_of_uop uop ^ "\n"
+  | SExprS expr ->
+    string_of_sexpr expr ^ "\n"
+    (* | SIncS(expr, uop) -> string_of_sexpr expr ^ string_of_uop uop ^ "\n"
              | SAssignment(exprs1, aop, exprs2) ->
                String.concat "" (List.map string_of_sexpr exprs1) ^ string_of_aop aop ^
-               String.concat "" (List.map string_of_sexpr exprs2) ^ "\n" *))
+               String.concat "" (List.map string_of_sexpr exprs2) ^ "\n" *)
   | SBlock stmts -> "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
   | SReturnS expr ->
     (match expr with
@@ -112,7 +110,7 @@ let rec string_of_sstmt = function
     let ss =
       match sim with
       | None -> ""
-      | Some v -> string_of_sstmt (SSimpleS v) ^ ";"
+      | Some v -> string_of_sexpr v ^ ";"
     in
     let blk = string_of_sstmt stmt in
     let el =
@@ -125,7 +123,7 @@ let rec string_of_sstmt = function
     let ss =
       match sim with
       | None -> ""
-      | Some v -> string_of_sstmt (SSimpleS v) ^ ";"
+      | Some v -> string_of_sexpr v ^ ";"
     in
     let ex =
       match expr with
@@ -142,7 +140,7 @@ let rec string_of_sstmt = function
     let ss =
       match sim with
       | None -> ""
-      | Some v -> string_of_sstmt (SSimpleS v) ^ ";"
+      | Some v -> string_of_sexpr v ^ ";"
     in
     let ex = string_of_sexpr expr in
     "match ("
@@ -171,7 +169,7 @@ let rec string_of_sstmt = function
         let ss =
           match sstmt with
           | None -> ""
-          | Some v -> string_of_sstmt (SSimpleS v)
+          | Some v -> string_of_sexpr v
         in
         s ^ e ^ ss
       | SRClause (id, expr) -> id ^ ";" ^ string_of_sexpr expr

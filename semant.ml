@@ -219,7 +219,8 @@ let check ((globals, units, utypes, functions) : program) =
               unit_simplify (repeat_unit u1 (check_intlit e2')))
           | Equal | Neq -> unit_convert u1 u2
           | Geq | Leq | Great | Less -> unit_convert u1 u2
-          | _ -> u1 (* Do not check *)
+          | _ -> u1
+          (* Do not check *)
         in
         let t = check_type_bop t1 t2 bop in
         (* TODO *)
@@ -308,7 +309,7 @@ let check ((globals, units, utypes, functions) : program) =
          follows any Return statement.  Nested blocks are flattened. *)
       | Block sl -> SBlock (check_stmt_list sl) (* A label treated as variable*)
       | LabelS (lb, st) -> check_stmt st
-      | SimpleS st -> SSimpleS (check_simple_stmt st)
+      | ExprS e -> SExprS (check_expr e)
       | ReturnS e ->
         let el = List.map check_expr e in
         if List.length e = 0
@@ -331,7 +332,7 @@ let check ((globals, units, utypes, functions) : program) =
         let sim =
           match simple with
           | None -> None
-          | Some v -> Some (check_simple_stmt v)
+          | Some v -> Some (check_expr v)
         in
         let e = check_bool_expr expr in
         let st1 = check_stmt stmt1 in
@@ -345,7 +346,7 @@ let check ((globals, units, utypes, functions) : program) =
         let sim =
           match simple with
           | None -> None
-          | Some v -> Some (check_simple_stmt v)
+          | Some v -> Some (check_expr v)
         in
         let e =
           match expr with
@@ -367,7 +368,7 @@ let check ((globals, units, utypes, functions) : program) =
         let sim =
           match simple with
           | None -> None
-          | Some v -> Some (check_simple_stmt v)
+          | Some v -> Some (check_expr v)
         in
         (* add var to symbol table ? *)
         let e = check_expr expr in
@@ -399,7 +400,7 @@ let check ((globals, units, utypes, functions) : program) =
             let ss =
               match sstmt with
               | None -> None
-              | Some v -> Some (check_simple_stmt v)
+              | Some v -> Some (check_expr v)
             in
             SFClause (s, e, ss)
           | RClause (id, expr) -> SRClause (id, check_expr expr)
@@ -413,8 +414,8 @@ let check ((globals, units, utypes, functions) : program) =
         in
         SLoopS l
       | FallS _ -> SFallS 0
-    and check_simple_stmt = function
-      | ExprS e -> SExprS (check_expr e)
+      (* and check_simple_stmt = function
+      | ExprS e -> SExprS (check_expr e) *)
     in
     (* body of check_func *)
     { srtyp = func.rtyp

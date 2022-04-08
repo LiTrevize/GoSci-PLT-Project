@@ -23,5 +23,11 @@ let _ =
       let program = Gosciparse.program Scanner.token lexbuf in
       let sprogram = Semant.check program in
       print_endline (string_of_sprogram sprogram))
+    else if Sys.argv.(1) = "irgen"
+    then (
+      let program = Gosciparse.program Scanner.token lexbuf in
+      let sprogram = Semant.check program in
+      let ir = Irgen.translate sprogram in
+      print_string (Llvm.string_of_llmodule ir))
     else raise (Failure "Invalid action: choose from 'scan', 'parse', or 'scheck'"))
 ;;

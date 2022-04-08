@@ -6,6 +6,11 @@ Install ounit2 package:
 opam install ounit2
 ```
 
+Install llvm package:
+```
+opam install llvm
+```
+
 Build test code:
 ```
 ocamlbuild -use-ocamlfind -pkgs ounit2 test.native
@@ -19,7 +24,7 @@ Run all test cases:
 ### Build the GoSci compiler
 
 ```
-ocamlbuild main.native
+ocamlbuild -pkgs llvm main.native
 ```
 
 ### Run the GoSci compiler

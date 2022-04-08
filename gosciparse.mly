@@ -167,7 +167,7 @@ statement_list:
 statement:
     // declaration   { $1 }
     labeled_stmt  { $1 }
-  | simple_stmt   { SimpleS($1) }
+  | expr_stmt   { $1 }
   | return_stmt   { $1 }
   | block         { $1 }
   | if_stmt       { $1 }
@@ -178,9 +178,9 @@ statement:
   | fall_through_stmt   { $1 }
 
 
-simple_stmt:
+// expr_stmt:
     // empty_stmt
-  expression_stmt { $1 }
+  // expr_stmt { $1 }
   // | inc_dec_stmt  { $1 }
   // | assignment    { $1 }
   // | short_var_decl 
@@ -203,7 +203,7 @@ label:
 //  /*nothing*/
 
 
-expression_stmt:
+expr_stmt:
     expr { ExprS($1) }
 
 
@@ -221,16 +221,16 @@ if_stmt:
     IF LPAREN expr RPAREN block                                 { IfS(None, $3, $5, None) }
   | IF LPAREN expr RPAREN block ELSE if_stmt                    { IfS(None, $3, $5, Some $7) }
   | IF LPAREN expr RPAREN block ELSE block                      { IfS(None, $3, $5, Some $7) }
-  | IF LPAREN simple_stmt SEMI expr RPAREN block                { IfS(Some $3, $5, $7, None) }
-  | IF LPAREN simple_stmt SEMI expr RPAREN block ELSE if_stmt   { IfS(Some $3, $5, $7, Some $9) }
-  | IF LPAREN simple_stmt SEMI expr RPAREN block ELSE block     { IfS(Some $3, $5, $7, Some $9) }
+  | IF LPAREN expr SEMI expr RPAREN block                { IfS(Some $3, $5, $7, None) }
+  | IF LPAREN expr SEMI expr RPAREN block ELSE if_stmt   { IfS(Some $3, $5, $7, Some $9) }
+  | IF LPAREN expr SEMI expr RPAREN block ELSE block     { IfS(Some $3, $5, $7, Some $9) }
 
 
 switch_stmt:
     SWITCH LPAREN RPAREN LBRACE expr_case_list RBRACE                         { SwitchS(None, None, $5) }
-  | SWITCH LPAREN simple_stmt SEMI RPAREN LBRACE expr_case_list RBRACE        { SwitchS(Some $3, None, $7) }
+  | SWITCH LPAREN expr SEMI RPAREN LBRACE expr_case_list RBRACE        { SwitchS(Some $3, None, $7) }
   | SWITCH LPAREN expr RPAREN LBRACE expr_case_list RBRACE                    { SwitchS(None, Some $3, $6) }
-  | SWITCH LPAREN simple_stmt SEMI expr RPAREN LBRACE expr_case_list RBRACE   { SwitchS(Some $3, Some $5, $8) }
+  | SWITCH LPAREN expr SEMI expr RPAREN LBRACE expr_case_list RBRACE   { SwitchS(Some $3, Some $5, $8) }
 
 
 expr_case_list:
@@ -250,7 +250,7 @@ expr_switch_case:
 match_stmt:
     MATCH LPAREN ID IASSIGN expr RPAREN LBRACE match_clause_list RBRACE
     { MatchS(None, $3, $5, $8) }
-  | MATCH LPAREN simple_stmt SEMI ID IASSIGN expr RPAREN LBRACE match_clause_list RBRACE
+  | MATCH LPAREN expr SEMI ID IASSIGN expr RPAREN LBRACE match_clause_list RBRACE
     { MatchS(Some $3, $5, $7, $10) }
 
 
@@ -290,12 +290,12 @@ for_clause:
 
 
 init_stmt:
-    simple_stmt   { SimpleS($1) }
+    expr_stmt   { $1 }
   // | declaration   {  }
 
 
 post_stmt:
-    simple_stmt   { $1 }
+    expr   { $1 }
 
 
 range_clause:
