@@ -44,6 +44,11 @@ Scan, parse, then semantic check
 ./main.native scheck
 ```
 
+Scan, parse, semantic check, then generate llvm code
+```
+./main.native irgen
+```
+
 ### Compiler files
 -  `ast.ml`: abstract syntax tree (AST)
 -  `scanner.mll`: scanner

@@ -7,7 +7,7 @@ let _ =
     raise
       (Failure
          "Must pass one arg to specify the compiler action: choose from 'scan', 'parse', \
-          or 'scheck'")
+          'scheck', or 'irgen'")
   else (
     let lexbuf = Lexing.from_channel stdin in
     if Sys.argv.(1) = "scan"
@@ -29,5 +29,6 @@ let _ =
       let sprogram = Semant.check program in
       let ir = Irgen.translate sprogram in
       print_string (Llvm.string_of_llmodule ir))
-    else raise (Failure "Invalid action: choose from 'scan', 'parse', or 'scheck'"))
+    else
+      raise (Failure "Invalid action: choose from 'scan', 'parse', 'scheck', or 'irgen'"))
 ;;
