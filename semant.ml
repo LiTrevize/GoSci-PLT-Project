@@ -266,6 +266,10 @@ let check ((globals, units, utypes, functions) : program) =
     | Id var ->
       ( (type_of_identifier var symbols, check_unit_expr (unit_of_identifier var symbols))
       , SId var )
+    | FieldLit (v, f) ->
+      ( ( type_of_var_field v f symbols global_structs
+        , unit_of_var_field v f symbols global_structs )
+      , SFieldLit (v, f) )
     | Paren e -> check_expr symbols e
     | Assign (var, e) as ex ->
       let lt = type_of_identifier var symbols

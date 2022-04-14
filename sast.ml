@@ -11,6 +11,7 @@ and sx =
   | SCharLit of char
   | SStrLit of string
   | SId of string
+  | SFieldLit of string * string
   | SBinop of sexpr * bop * sexpr
   | SUnaop of uop * sexpr
   | SAssign of string * sexpr
@@ -86,6 +87,7 @@ let rec string_of_sexpr (((t, u), e) : sexpr) =
     | SCharLit l -> String.make 1 l
     | SStrLit l -> l
     | SId s -> s
+    | SFieldLit (v, f) -> v ^ "." ^ f
     | SBinop (e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_sexpr e2
     | SUnaop (o, e) -> string_of_uop o ^ " " ^ string_of_sexpr e

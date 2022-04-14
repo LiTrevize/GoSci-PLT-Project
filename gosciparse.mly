@@ -316,13 +316,15 @@ fall_through_stmt:
     FALL  { FallS(0) }
 
 
+
 expr:
     ILIT unit_expr_opt  { IntLit($1, $2)         }
   | BLIT                { BoolLit($1)            }
   | FLIT unit_expr_opt  { FloatLit($1, $2)       }
   | CLIT                { CharLit($1)            }
   | SLIT                { StrLit($1)             }
-  | LID                  { Id($1)                 }
+  | LID                 { Id($1)                 }
+  | LID DOT LID         { FieldLit($1,   $3)     }
   | expr PLUS   expr    { Binop($1, Add,   $3)   }
   | expr MINUS  expr    { Binop($1, Sub,   $3)   }
   | expr MUL    expr    { Binop($1, Mul,   $3)   }
