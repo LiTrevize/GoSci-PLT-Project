@@ -6,7 +6,7 @@ float vel [m][s -1];
 unit U {}
 
 unit km {
-  1000 m
+  1000.0 m
 }
 
 vartype Num {
@@ -54,6 +54,10 @@ func main() int{
   t ^ 3;  /* [s 3] */
   acc * vel;  /* [m 2][s -3] */
   acc / acc;  /* [] */
+  acc2 = acc;  /* acc / 1000 */
+  acc = acc2;  /* acc2 * 1000 */
+  acc2 + acc;  /* acc / 1000 */
+  acc + acc2;  /* acc2 * 1000 */
   
   c = 'c';
   s = "helloworld";

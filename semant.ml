@@ -9,6 +9,11 @@ module StringMap = Map.Make (String)
 
    Check each global variable, then check each function *)
 
+type coef =
+  | One
+  | MulE of expr
+  | DivE of expr
+
 let check ((globals, units, utypes, functions) : program) =
   (* Verify a list of bindings has no duplicate names *)
   let check_binds (kind : string) (binds : (typ * string * unit_expr) list) =
@@ -92,13 +97,69 @@ let check ((globals, units, utypes, functions) : program) =
            ^ string_of_unit_expr ru))
   in
   let unit_convert u1 u2 =
-    (* TODO: real convert *)
     if u1 = u2
-    then u1
+    then One
+    else (
+      let p1 = StringMap.find u1 global_units in
+      let p2 = StringMap.find u2 global_units in
+      match p1, p2 with
+      | BaseUnit, CUnit (e, id) when u1 = id -> MulE e
+      | CUnit (e, id), BaseUnit when u2 = id -> DivE e
+      | CUnit (e1, id1), CUnit (e2, id2) when id1 = id2 -> MulE (Binop (e2, Div, e1))
+      | _ -> raise (Failure ("cannot convert " ^ u2 ^ " to " ^ u1)))
+  in
+  let unit_term_convert (u1, i1) (u2, i2) =
+    if i1 = i2
+    then (
+      match unit_convert u1 u2, i1 with
+      | One, _ -> One
+      | MulE e, i -> if i = 1 then MulE e else MulE (Binop (e, Pow, IntLit (i1, [])))
+      | DivE e, i -> if i = 1 then DivE e else DivE (Binop (e, Pow, IntLit (i1, []))))
     else
       raise
         (Failure
-           (string_of_unit_expr u2 ^ " cannot be converted to " ^ string_of_unit_expr u1))
+           ("cannot convert "
+           ^ string_of_unit_term (u1, i1)
+           ^ " to "
+           ^ string_of_unit_term (u2, i2)))
+  in
+  let rec repeat item = function
+    | 1 -> [ item ]
+    | _ as n -> item :: repeat item (n - 1)
+  in
+  let rec flatten_unit_expr = function
+    | [] -> []
+    | hd :: tl -> repeat (fst hd, 1) (snd hd) @ flatten_unit_expr tl
+  in
+  let unit_expr_convert ue1 ue2 =
+    if ue1 = ue2 || ue2 = []
+    then []
+    else (
+      let ue1' = flatten_unit_expr ue1 in
+      let ue2' = flatten_unit_expr ue2 in
+      if List.length ue1' != List.length ue2'
+      then
+        raise
+          (Failure
+             ("cannot convert "
+             ^ string_of_unit_expr ue1
+             ^ " to "
+             ^ string_of_unit_expr ue2))
+      else (
+        let f convE ut1 ut2 =
+          let newE = unit_term_convert ut1 ut2 in
+          newE :: convE
+        in
+        List.rev (List.fold_left2 f [] ue1' ue2')))
+  in
+  let convert_expr_by_unit expr ue1 ue2 =
+    let f expr convE =
+      match convE with
+      | One -> expr
+      | MulE e -> Binop (expr, Mul, e)
+      | DivE e -> Binop (expr, Div, e)
+    in
+    List.fold_left f expr (unit_expr_convert ue1 ue2)
   in
   let unit_simplify u =
     let update m item =
@@ -169,6 +230,8 @@ let check ((globals, units, utypes, functions) : program) =
       let lt = type_of_identifier var symbols
       and lu = unit_of_identifier var symbols
       and (rt, ru), e' = check_expr symbols e in
+      let _, e' = check_expr symbols (convert_expr_by_unit e lu ru) in
+      let ru = lu in
       let err =
         "illegal assignment "
         ^ string_of_typ lt
@@ -213,7 +276,7 @@ let check ((globals, units, utypes, functions) : program) =
       (* Determine expression type based on operator and operand units *)
       let check_unit_bop u1 u2 bop =
         match bop with
-        | Add | Sub -> unit_convert u1 u2
+        | Add | Sub -> u1
         | Mul -> unit_simplify (u1 @ u2)
         | Div -> unit_simplify (u1 @ List.map (fun (u, i) -> u, -i) u2)
         | Pow ->
@@ -227,15 +290,23 @@ let check ((globals, units, utypes, functions) : program) =
               | _ -> raise (Failure "n must be positive")
             in
             unit_simplify (repeat_unit u1 (check_intlit e2')))
-        | Equal | Neq -> unit_convert u1 u2
-        | Geq | Leq | Great | Less -> unit_convert u1 u2
+        | Equal | Neq -> u1
+        | Geq | Leq | Great | Less -> u1
         | _ -> u1
         (* Do not check *)
       in
       let t = check_type_bop t1 t2 bop in
       (* TODO *)
       let u = check_unit_bop u1 u2 bop in
-      (t, u), SBinop (((t1, u1), e1'), bop, ((t2, u2), e2'))
+      (match bop with
+      | Add | Sub | Equal | Neq | Geq | Leq | Great | Less ->
+        ( (t, u)
+        , SBinop
+            ( ((t1, u1), e1')
+            , bop
+            , ((t2, u1), snd (check_expr symbols (convert_expr_by_unit e2 u1 u2))) ) )
+      | _ -> (t, u), SBinop (((t1, u1), e1'), bop, ((t2, u2), e2')))
+      (* (t, u), SBinop (((t1, u1), e1'), bop, ((t2, u2), e2')) *)
       (* else raise (Failure err) *)
     | Unaop (uop, e) as ex ->
       let (t, u), e' = check_expr symbols e in
