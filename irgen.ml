@@ -96,15 +96,25 @@ let translate (globals, units, utypes, functions) =
       | Not_found -> StringMap.find n global_vars
     in
     (* Construct code for an expression; return its value *)
-    let rec build_expr builder ((_, e) : sexpr) =
+    let rec build_expr builder ((_, e) : sexpr) : L.llvalue =
       match e with
       | SIntLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SId s -> L.build_load (lookup s) s builder
       | SAssign (s, e) ->
         let e' = build_expr builder e in
+        (* e' computes the e.addr *)
         ignore (L.build_store e' (lookup s) builder);
+        (* store e' to the address of s *)
         e'
+      | SUnaop(op, ((t, _) as e)) ->
+        let v = build_expr builder e in 
+        let t = L.type_of v in 
+        (match op with
+          | A.Neg -> L.build_neg
+          | A.Not -> L.build_icmp L.Icmp.Ne (L.const_int t 0)
+          | _ -> raise (Failure "Operator Not Implemented"))
+        v "tmp" builder 
       | SBinop (e1, op, e2) ->
         let e1' = build_expr builder e1
         and e2' = build_expr builder e2 in
