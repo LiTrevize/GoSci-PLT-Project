@@ -45,7 +45,19 @@ let check ((globals, units, utypes, functions) : program) =
       StringMap.add name (ty, uexpr) m
     | ty, name, uexpr -> StringMap.add name (ty, uexpr) m
   in
+  (* global variables *)
   let global_vars = List.fold_left add_var StringMap.empty globals in
+  (* global unit table *)
+  let global_units = StringMap.empty in
+  let global_units = StringMap.add "s" BaseUnit global_units in
+  let global_units = StringMap.add "m" BaseUnit global_units in
+  let global_units = StringMap.add "kg" BaseUnit global_units in
+  let global_units = StringMap.add "A" BaseUnit global_units in
+  let global_units = StringMap.add "K" BaseUnit global_units in
+  let global_units = StringMap.add "mol" BaseUnit global_units in
+  let global_units = StringMap.add "cd" BaseUnit global_units in
+  let add_unit m unt = StringMap.add (fst unt) (snd unt) m in
+  let global_units = List.fold_left add_unit global_units units in
   let type_of_identifier s m =
     try fst (StringMap.find s m) with
     | Not_found -> raise (Failure ("undeclared identifier " ^ s))
@@ -53,6 +65,14 @@ let check ((globals, units, utypes, functions) : program) =
   let unit_of_identifier s m =
     try snd (StringMap.find s m) with
     | Not_found -> raise (Failure ("undeclared identifier " ^ s))
+  in
+  let check_unit_expr (uexpr : unit_expr) =
+    let f checked (u, exp) =
+      if StringMap.mem u global_units
+      then (u, exp) :: checked
+      else raise (Failure ("unit " ^ u ^ " not defined"))
+    in
+    List.rev (List.fold_left f [] uexpr)
   in
   (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
@@ -135,6 +155,141 @@ let check ((globals, units, utypes, functions) : program) =
   in
   let _ = find_func "main" in
   (* Ensure "main" is defined *)
+  let rec check_expr symbols = function
+    | IntLit (l, u) -> (Int, check_unit_expr u), SIntLit l
+    | BoolLit l -> (Bool, []), SBoolLit l
+    | FloatLit (l, u) -> (Float, check_unit_expr u), SFloatLit l
+    | CharLit l -> (Char, []), SCharLit l
+    | StrLit l -> (Str, []), SStrLit l
+    | Id var ->
+      ( (type_of_identifier var symbols, check_unit_expr (unit_of_identifier var symbols))
+      , SId var )
+    | Paren e -> check_expr symbols e
+    | Assign (var, e) as ex ->
+      let lt = type_of_identifier var symbols
+      and lu = unit_of_identifier var symbols
+      and (rt, ru), e' = check_expr symbols e in
+      let err =
+        "illegal assignment "
+        ^ string_of_typ lt
+        ^ " = "
+        ^ string_of_typ rt
+        ^ string_of_unit_expr ru
+        ^ " in "
+        ^ string_of_expr ex
+      in
+      ( (check_type_assign lt rt err, check_unit_assign lu ru err)
+      , SAssign (var, ((rt, ru), e')) )
+    | Binop (e1, bop, e2) ->
+      let (((t1, u1), e1') as se1) = check_expr symbols e1
+      and (((t2, u2), e2') as se2) = check_expr symbols e2 in
+      (* Determine expression type based on operator and operand types *)
+      let check_intlit (e : sx) =
+        match e with
+        | SIntLit l -> l
+        | _ -> raise (Failure (string_of_sexpr se2 ^ " is not int literal"))
+      in
+      let check_type_bop t1 t2 bop =
+        match bop with
+        | (Add | Sub | Mul) when t1 = t2 && t1 = Int -> Int
+        | (Add | Sub | Mul) when t1 = t2 && t1 = Float -> Float
+        | Pow when t1 = Int && t2 = Int && check_intlit e2' >= 0 -> Int
+        | Pow when t1 = Float && t2 = Int && check_intlit e2' >= 0 -> Float
+        | (Div | Mod) when t1 = t2 && t1 = Int -> Int
+        | Div when t1 = t2 && t1 = Float -> Float
+        | Equal | Neq -> Bool
+        | (Geq | Leq | Great | Less) when t1 = Int || t1 = Float -> Bool
+        | (And | Or) when t1 = Bool -> Bool
+        | _ ->
+          raise
+            (Failure
+               ("illegal type in binary operator "
+               ^ string_of_typ t1
+               ^ " "
+               ^ string_of_bop bop
+               ^ " "
+               ^ string_of_typ t2))
+      in
+      (* Determine expression type based on operator and operand units *)
+      let check_unit_bop u1 u2 bop =
+        match bop with
+        | Add | Sub -> unit_convert u1 u2
+        | Mul -> unit_simplify (u1 @ u2)
+        | Div -> unit_simplify (u1 @ List.map (fun (u, i) -> u, -i) u2)
+        | Pow ->
+          if u2 <> []
+          then raise (Failure "exponent must be unitless")
+          else (
+            let rec repeat_unit (u : unit_expr) (n : int) =
+              match n with
+              | 1 -> u
+              | _ when n > 1 -> u @ repeat_unit u (n - 1)
+              | _ -> raise (Failure "n must be positive")
+            in
+            unit_simplify (repeat_unit u1 (check_intlit e2')))
+        | Equal | Neq -> unit_convert u1 u2
+        | Geq | Leq | Great | Less -> unit_convert u1 u2
+        | _ -> u1
+        (* Do not check *)
+      in
+      let t = check_type_bop t1 t2 bop in
+      (* TODO *)
+      let u = check_unit_bop u1 u2 bop in
+      (t, u), SBinop (((t1, u1), e1'), bop, ((t2, u2), e2'))
+      (* else raise (Failure err) *)
+    | Unaop (uop, e) as ex ->
+      let (t, u), e' = check_expr symbols e in
+      let err =
+        "illegal unary operator "
+        ^ string_of_typ t
+        ^ string_of_unit_expr u
+        ^ " "
+        ^ string_of_uop uop
+        ^ " in "
+        ^ string_of_expr ex
+      in
+      let t =
+        match uop with
+        | Neg when t = Int || t = Float -> t
+        | Inc when t = Int || t = Float -> t
+        | Dec when t = Int || t = Float -> t
+        | Not when t = Bool -> Bool
+        | _ -> raise (Failure err)
+      in
+      let check_unit_uop u uop = u in
+      let uu = check_unit_uop u uop in
+      (t, uu), SUnaop (uop, ((t, u), e'))
+    | Call (fname, args) as call ->
+      let fd = find_func fname in
+      let param_length = List.length fd.formals in
+      if List.length args != param_length
+      then
+        raise
+          (Failure
+             ("expecting "
+             ^ string_of_int param_length
+             ^ " arguments in "
+             ^ string_of_expr call))
+      else (
+        let check_call (ft, _, fu) e =
+          let (et, eu), e' = check_expr symbols e in
+          let err =
+            "illegal argument found "
+            ^ string_of_typ et
+            ^ " "
+            ^ string_of_unit_expr eu
+            ^ " expected "
+            ^ string_of_typ ft
+            ^ " "
+            ^ string_of_unit_expr fu
+            ^ " in "
+            ^ string_of_expr e
+          in
+          (check_type_assign ft et err, check_unit_assign fu eu err), e'
+        in
+        let args' = List.map2 check_call fd.formals args in
+        fd.rtyp, SCall (fname, args'))
+  in
   let check_func func =
     (* Make sure no formals or locals are void or duplicates *)
     check_binds "formal" func.formals;
@@ -146,142 +301,8 @@ let check ((globals, units, utypes, functions) : program) =
     (* Return a variable from our local symbol table *)
 
     (* Return a semantically-checked expression, i.e., with a type *)
-    let rec check_expr = function
-      | IntLit (l, u) -> (Int, u), SIntLit l
-      | BoolLit l -> (Bool, []), SBoolLit l
-      | FloatLit (l, u) -> (Float, u), SFloatLit l
-      | CharLit l -> (Char, []), SCharLit l
-      | StrLit l -> (Str, []), SStrLit l
-      | Id var ->
-        (type_of_identifier var symbols, unit_of_identifier var symbols), SId var
-      | Paren e -> check_expr e
-      | Assign (var, e) as ex ->
-        let lt = type_of_identifier var symbols
-        and lu = unit_of_identifier var symbols
-        and (rt, ru), e' = check_expr e in
-        let err =
-          "illegal assignment "
-          ^ string_of_typ lt
-          ^ " = "
-          ^ string_of_typ rt
-          ^ string_of_unit_expr ru
-          ^ " in "
-          ^ string_of_expr ex
-        in
-        ( (check_type_assign lt rt err, check_unit_assign lu ru err)
-        , SAssign (var, ((rt, ru), e')) )
-      | Binop (e1, bop, e2) ->
-        let (((t1, u1), e1') as se1) = check_expr e1
-        and (((t2, u2), e2') as se2) = check_expr e2 in
-        (* Determine expression type based on operator and operand types *)
-        let check_intlit (e : sx) =
-          match e with
-          | SIntLit l -> l
-          | _ -> raise (Failure (string_of_sexpr se2 ^ " is not int literal"))
-        in
-        let check_type_bop t1 t2 bop =
-          match bop with
-          | (Add | Sub | Mul) when t1 = t2 && t1 = Int -> Int
-          | (Add | Sub | Mul) when t1 = t2 && t1 = Float -> Float
-          | Pow when t1 = Int && t2 = Int && check_intlit e2' >= 0 -> Int
-          | Pow when t1 = Float && t2 = Int && check_intlit e2' >= 0 -> Float
-          | (Div | Mod) when t1 = t2 && t1 = Int -> Int
-          | Div when t1 = t2 && t1 = Float -> Float
-          | Equal | Neq -> Bool
-          | (Geq | Leq | Great | Less) when t1 = Int || t1 = Float -> Bool
-          | (And | Or) when t1 = Bool -> Bool
-          | _ ->
-            raise
-              (Failure
-                 ("illegal type in binary operator "
-                 ^ string_of_typ t1
-                 ^ " "
-                 ^ string_of_bop bop
-                 ^ " "
-                 ^ string_of_typ t2))
-        in
-        (* Determine expression type based on operator and operand units *)
-        let check_unit_bop u1 u2 bop =
-          match bop with
-          | Add | Sub -> unit_convert u1 u2
-          | Mul -> unit_simplify (u1 @ u2)
-          | Div -> unit_simplify (u1 @ List.map (fun (u, i) -> u, -i) u2)
-          | Pow ->
-            if u2 <> []
-            then raise (Failure "exponent must be unitless")
-            else (
-              let rec repeat_unit (u : unit_expr) (n : int) =
-                match n with
-                | 1 -> u
-                | _ when n > 1 -> u @ repeat_unit u (n - 1)
-                | _ -> raise (Failure "n must be positive")
-              in
-              unit_simplify (repeat_unit u1 (check_intlit e2')))
-          | Equal | Neq -> unit_convert u1 u2
-          | Geq | Leq | Great | Less -> unit_convert u1 u2
-          | _ -> u1
-          (* Do not check *)
-        in
-        let t = check_type_bop t1 t2 bop in
-        (* TODO *)
-        let u = check_unit_bop u1 u2 bop in
-        (t, u), SBinop (((t1, u1), e1'), bop, ((t2, u2), e2'))
-        (* else raise (Failure err) *)
-      | Unaop (uop, e) as ex ->
-        let (t, u), e' = check_expr e in
-        let err =
-          "illegal unary operator "
-          ^ string_of_typ t
-          ^ string_of_unit_expr u
-          ^ " "
-          ^ string_of_uop uop
-          ^ " in "
-          ^ string_of_expr ex
-        in
-        let t =
-          match uop with
-          | Neg when t = Int || t = Float -> t
-          | Inc when t = Int || t = Float -> t
-          | Dec when t = Int || t = Float -> t
-          | Not when t = Bool -> Bool
-          | _ -> raise (Failure err)
-        in
-        let check_unit_uop u uop = u in
-        let uu = check_unit_uop u uop in
-        (t, uu), SUnaop (uop, ((t, u), e'))
-      | Call (fname, args) as call ->
-        let fd = find_func fname in
-        let param_length = List.length fd.formals in
-        if List.length args != param_length
-        then
-          raise
-            (Failure
-               ("expecting "
-               ^ string_of_int param_length
-               ^ " arguments in "
-               ^ string_of_expr call))
-        else (
-          let check_call (ft, _, fu) e =
-            let (et, eu), e' = check_expr e in
-            let err =
-              "illegal argument found "
-              ^ string_of_typ et
-              ^ " "
-              ^ string_of_unit_expr eu
-              ^ " expected "
-              ^ string_of_typ ft
-              ^ " "
-              ^ string_of_unit_expr fu
-              ^ " in "
-              ^ string_of_expr e
-            in
-            (check_type_assign ft et err, check_unit_assign fu eu err), e'
-          in
-          let args' = List.map2 check_call fd.formals args in
-          fd.rtyp, SCall (fname, args'))
-    in
     let check_bool_expr e =
-      let (t, u), e' = check_expr e in
+      let (t, u), e' = check_expr symbols e in
       match t with
       | Bool -> (t, u), e'
       | _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
@@ -309,9 +330,9 @@ let check ((globals, units, utypes, functions) : program) =
          follows any Return statement.  Nested blocks are flattened. *)
       | Block sl -> SBlock (check_stmt_list sl) (* A label treated as variable*)
       | LabelS (lb, st) -> check_stmt st
-      | ExprS e -> SExprS (check_expr e)
+      | ExprS e -> SExprS (check_expr symbols e)
       | ReturnS e ->
-        let el = List.map check_expr e in
+        let el = List.map (check_expr symbols) e in
         if List.length e = 0
         then SReturnS el
         else (
@@ -332,7 +353,7 @@ let check ((globals, units, utypes, functions) : program) =
         let sim =
           match simple with
           | None -> None
-          | Some v -> Some (check_expr v)
+          | Some v -> Some (check_expr symbols v)
         in
         let e = check_bool_expr expr in
         let st1 = check_stmt stmt1 in
@@ -346,19 +367,19 @@ let check ((globals, units, utypes, functions) : program) =
         let sim =
           match simple with
           | None -> None
-          | Some v -> Some (check_expr v)
+          | Some v -> Some (check_expr symbols v)
         in
         let e =
           match expr with
           | None -> None
-          | Some v -> Some (check_expr v)
+          | Some v -> Some (check_expr symbols v)
         in
         let sc =
           List.map
             (fun case ->
               match case with
               | CaseS (el, sl) ->
-                let el' = List.map check_expr el in
+                let el' = List.map (check_expr symbols) el in
                 let sl' = List.map check_stmt sl in
                 SCaseS (el', sl'))
             casel
@@ -368,10 +389,10 @@ let check ((globals, units, utypes, functions) : program) =
         let sim =
           match simple with
           | None -> None
-          | Some v -> Some (check_expr v)
+          | Some v -> Some (check_expr symbols v)
         in
         (* add var to symbol table ? *)
-        let e = check_expr expr in
+        let e = check_expr symbols expr in
         let mc =
           List.map
             (fun case ->
@@ -385,7 +406,7 @@ let check ((globals, units, utypes, functions) : program) =
       | ForS (ftype, stmt) ->
         let f =
           match ftype with
-          | Condition c -> SCondition (check_expr c)
+          | Condition c -> SCondition (check_expr symbols c)
           | FClause (stmt, expr, sstmt) ->
             let s =
               match stmt with
@@ -395,15 +416,15 @@ let check ((globals, units, utypes, functions) : program) =
             let e =
               match expr with
               | None -> None
-              | Some v -> Some (check_expr v)
+              | Some v -> Some (check_expr symbols v)
             in
             let ss =
               match sstmt with
               | None -> None
-              | Some v -> Some (check_expr v)
+              | Some v -> Some (check_expr symbols v)
             in
             SFClause (s, e, ss)
-          | RClause (id, expr) -> SRClause (id, check_expr expr)
+          | RClause (id, expr) -> SRClause (id, check_expr symbols expr)
         in
         SForS (f, check_stmt stmt)
       | LoopS ctrl ->
@@ -425,81 +446,14 @@ let check ((globals, units, utypes, functions) : program) =
     ; sbody = check_stmt_list func.body
     }
   in
-  let check_unit unt =
-    let rec check_num_expr = function
-      | IntLit (l, u) -> (Int, u), SIntLit l
-      | BoolLit l -> (Bool, []), SBoolLit l
-      | FloatLit (l, u) -> (Float, []), SFloatLit l
-      | CharLit l -> (Char, []), SCharLit l
-      | StrLit l -> (Str, []), SStrLit l
-      | Id var ->
-        (type_of_identifier var global_vars, unit_of_identifier var global_vars), SId var
-      | Binop (e1, bop, e2) as e ->
-        let (t1, u1), e1' = check_num_expr e1
-        and (t2, u2), e2' = check_num_expr e2 in
-        let err =
-          "illegal binary operator "
-          ^ string_of_typ t1
-          ^ string_of_unit_expr u1
-          ^ " "
-          ^ string_of_bop bop
-          ^ " "
-          ^ string_of_typ t2
-          ^ string_of_unit_expr u2
-          ^ " in "
-          ^ string_of_expr e
-        in
-        (* All binary operators require operands of the same type except pow *)
-        (* if t1 = t2 then *)
-        (* Determine expression type based on operator and operand types *)
-        let t =
-          match bop with
-          | (Add | Sub | Mul) when t1 = t2 && t1 = Int -> Int
-          | (Add | Sub | Mul) when t1 = t2 && t1 = Float -> Float
-          | Pow when t1 = Int && t2 = Int -> Int
-          | Pow when t1 = Float && t2 = Int -> Float
-          | (Div | Mod) when t1 = t2 && t1 = Int -> Int
-          | Div when t1 = t2 && t1 = Float -> Float
-          | Equal | Neq -> Bool
-          | (Geq | Leq | Great | Less) when t1 = Int || t1 = Float -> Bool
-          | (And | Or) when t1 = Bool -> Bool
-          | _ -> raise (Failure err)
-        in
-        (* TODO *)
-        let check_unit_bop u1 u2 bop = u1 in
-        (t, check_unit_bop u1 u2 bop), SBinop (((t1, u1), e1'), bop, ((t2, u2), e2'))
-      | Call (fname, args) as call ->
-        let fd = find_func fname in
-        let param_length = List.length fd.formals in
-        if List.length args != param_length
-        then
-          raise
-            (Failure
-               ("expecting "
-               ^ string_of_int param_length
-               ^ " arguments in "
-               ^ string_of_expr call))
-        else (
-          let check_call (ft, _, fu) e =
-            let (et, eu), e' = check_num_expr e in
-            let err =
-              "illegal argument found "
-              ^ string_of_typ et
-              ^ " "
-              ^ string_of_unit_expr eu
-              ^ " expected "
-              ^ string_of_typ ft
-              ^ " "
-              ^ string_of_unit_expr fu
-              ^ " in "
-              ^ string_of_expr e
-            in
-            (check_type_assign ft et err, check_unit_assign fu eu err), e'
-          in
-          let args' = List.map2 check_call fd.formals args in
-          fd.rtyp, SCall (fname, args'))
-      | _ as l ->
-        raise (Failure ("Invalid operation for unit declaration: " ^ string_of_expr l))
+  let check_unit_decl unt =
+    let check_num_expr e =
+      let ckd = check_expr global_vars e in
+      match ckd with
+      | (Int, []), _ -> ckd
+      | (Float, []), _ -> ckd
+      | _ ->
+        raise (Failure ("Invalid operation for unit declaration: " ^ string_of_sexpr ckd))
     in
     match snd unt with
     | BaseUnit -> fst unt, SBaseUnit
@@ -513,7 +467,7 @@ let check ((globals, units, utypes, functions) : program) =
     | ArrType (name, shape_list) -> SArrType (name, shape_list)
   in
   ( globals
-  , List.map check_unit units
+  , List.map check_unit_decl units
   , List.map check_utype utypes
   , List.map check_func functions )
 ;;

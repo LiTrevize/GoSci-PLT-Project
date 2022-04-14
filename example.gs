@@ -39,6 +39,7 @@ func main() int{
   int i;
   float t [s];
   float acc [m][s -2];
+  float acc2 [km][s -2];
   Num number;
   Person student;
   
