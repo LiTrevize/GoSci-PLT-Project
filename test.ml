@@ -35,8 +35,8 @@ let (test_cases_parser : (string * (string * program)) list) =
   ; ("if"
     ,("func testfunc4 (int a, int b) int { if (b< a) { a= a-b;} else { b= b-a;} return a;}",([],[],[],[{rtyp = (Int, []);fname = "testfunc4"; formals = [(Int,"a",[]);(Int,"b",[])];locals = []; body =[IfS(None,Binop((Id("b"),Less,Id("a"))),Block([ExprS(Assign("a",Binop(Id("a"),Sub,Id("b"))))]),Some(Block([ExprS(Assign("b",Binop(Id("b"),Sub,Id("a"))))])));ReturnS([Id("a")])]}])))
   ; ("match"
-    ,("func testfunc5 () int { int c; c = 'c'; match (v:=c) { case int: return 1; case float: return 2; default: break;}}"
-    ,([],[],[],[{rtyp = (Int, []);fname = "testfunc5"; formals=[]; locals = [(Int,"c",[])]; body=[ExprS(Assign("c",CharLit('c')));MatchS(None,"v",Id("c"),[MatchC(Some(Int),[ReturnS([IntLit(1,[])])]); MatchC(Some(Float),[ReturnS([IntLit(2,[])])]); MatchC(None,[LoopS(BreakS(None))])])]}])))
+    ,("func testfunc5 () int { char c; c = 'c'; match (v:=c) { case int: return 1; case float: return 2; default: break;}}"
+    ,([],[],[],[{rtyp = (Int, []);fname = "testfunc5"; formals=[]; locals = [(Char,"c",[])]; body=[ExprS(Assign("c",CharLit('c')));MatchS(None,"v",Id("c"),[MatchC(Some(Int),[ReturnS([IntLit(1,[])])]); MatchC(Some(Float),[ReturnS([IntLit(2,[])])]); MatchC(None,[LoopS(BreakS(None))])])]}])))
   ; ("switch"
     , ("func testfunc6 () int {int x; x=1; switch (x+1;x) {case 1, 2: return x; case 3: break; default: return x-1;}}"
     , ([],[],[],[{rtyp = (Int, []); fname= "testfunc6"; formals=[]; locals = [(Int,"x",[])]; body=[ExprS(Assign("x",IntLit(1,[])));SwitchS(Some(Binop(Id("x"),Add,IntLit(1,[]))),Some(Id("x")),[CaseS([IntLit(1,[]);IntLit(2,[])],[ReturnS([Id("x")])]); CaseS([IntLit(3,[])],[LoopS(BreakS(None))]); CaseS([],[ReturnS([Binop(Id("x"),Sub,IntLit(1,[]))])])]  )]}])))
@@ -56,6 +56,22 @@ let (test_cases_checker : (string * (string * sprogram)) list) =
     , ("bool flag; func main() int {}", ([ Bool, "flag", [] ], [], [], [empty_main])) )
     ; ( "global variable declaration with unit"
     , ("float vel [m 1][s -1]; func main() int {}", ([ Float, "vel", [ "m", 1; "s", -1 ] ], [], [], [empty_main])) )
+    ; ( "Non-empty unit"
+    , ("unit km { 1000 m } func main() int {}", ([], [("km", SCUnit(((Int,[]),SIntLit(1000)), "m")) ], [], [empty_main])) )
+    ; ( "Vartype declaration"
+    , ("vartype Num {int | float} func main() int {}", ([], [], [ SVarType ("Num", [ Int; Float ]) ], [empty_main])) )
+    ; ("Struct declaration"
+    ,("struct Person {string name; int age;} func main() int {}",([],[],[SStructType("Person",[(Str,"name",[]);(Int,"age",[])])],[empty_main])) )
+    ;("function declaration"
+    ,("func testfunc1 (int a, int b) int {return a;} func main() int {}",([],[],[],[ {srtyp = (Int, []); sfname = "testfunc1"; sformals = [(Int,"a",[]);(Int,"b",[])]; slocals = []; sbody = [SReturnS([((Int,[]),SId("a"))])]};empty_main])))
+    ; ("for"
+    , ("func testfunc3 (int a, int b) int { for (a!=b){ a=a-b; } return a;} func main() int {}",([],[],[],[ {srtyp = (Int, []); sfname = "testfunc3"; sformals = [(Int,"a",[]);(Int,"b",[])]; slocals = []; sbody = [SForS(SCondition((Bool,[]),SBinop(((Int,[]),SId("a")),Neq,((Int,[]),SId("b")))),SBlock([SExprS((Int,[]),SAssign("a",((Int,[]),SBinop(((Int,[]),SId("a")),Sub,((Int,[]),SId("b"))))))]));SReturnS([((Int,[]),SId("a"))])] };empty_main])))
+    ; ("if"
+    ,("func testfunc4 (int a, int b) int { if (b< a) { a= a-b;} else { b= b-a;} return a;} func main() int {}",([],[],[],[{srtyp = (Int, []);sfname = "testfunc4"; sformals = [(Int,"a",[]);(Int,"b",[])];slocals = []; sbody =[SIfS(None,((Bool,[]),SBinop((((Int,[]),SId("b")),Less,((Int,[]),SId("a"))))),SBlock([SExprS((Int,[]),SAssign("a",((Int,[]),SBinop(((Int,[]),SId("a")),Sub,((Int,[]),SId("b"))))))]),Some(SBlock([SExprS((Int,[]),SAssign("b",((Int,[]),SBinop(((Int,[]),SId("b")),Sub,((Int,[]),SId("a"))))))])));SReturnS([((Int,[]),SId("a"))])]};empty_main])))
+    ; ("match"
+    ,("func testfunc5 () int { char c; c = 'c'; match (v:=c) { case int: return 1; case float: return 2; default: break;}} func main() int {}"
+    ,([],[],[],[{srtyp = (Int, []);sfname = "testfunc5"; sformals=[]; slocals = [(Char,"c",[])]; sbody=[SExprS((Char,[]),SAssign("c",((Char,[]),SCharLit('c')))); SMatchS(None,"v",((Char,[]),SId("c")),[SMatchC(Some(Int),[SReturnS([((Int,[]),SIntLit(1))])]); SMatchC(Some(Float),[SReturnS([((Int,[]),SIntLit(2))])]); SMatchC(None,[SLoopS(SBreakS(None))])])]};empty_main])))
+    
 
     
   ]
