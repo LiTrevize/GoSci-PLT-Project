@@ -4,6 +4,12 @@ open Ast
 open Sast
 module StringMap = Map.Make (String)
 
+type control = {
+      can_break: bool;
+      can_continue: bool;
+      can_fall: bool;
+    }
+
 (* Semantic checking of the AST. Returns an SAST if successful,
    throws an exception if something is wrong.
 
@@ -378,35 +384,37 @@ let check ((globals, units, utypes, functions) : program) =
       | Bool -> (t, u), e'
       | _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
     in
-    (* let check_int_expr e =
-         let ((t, u), e') = check_expr e in
-         match t with
-         | Int -> ((t, u), e')
-         |  _ -> raise (Failure ("expected Int expression in " ^ string_of_expr e))
-       in
 
-       let check_assignable_expr e =
-         let ((t, u), e') = check_expr e in
-         match e' with
-         | SId _ -> ((t, u), e')
-         |  _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
-       in *)
-    let rec check_stmt_list = function
+    let rec check_stmt_list ctrl = function
       | [] -> []
-      | Block sl :: sl' -> check_stmt_list (sl @ sl') (* Flatten blocks *)
-      | s :: sl -> check_stmt s :: check_stmt_list sl
+      | FallS f :: s ::sl -> ignore(check_stmt ctrl (FallS f));
+        raise (Failure ("fallthough must be the last statement"))
+      (* 
+      'break' will generate 'br END' and ignore all the remaining codes in the same block
+      'continue' will generate 'br Cond' or 'br Update' and ignore all the remaining codes in the same block
+      *)
+      | LoopS loo :: sl ->
+        let l =
+          match loo with
+          | BreakS b -> check_stmt ctrl (LoopS loo)
+          | ContinueS c -> check_stmt ctrl (LoopS loo)
+        in
+        l :: []
+      | Block sl :: sl' -> check_stmt_list ctrl (sl @ sl') (* Flatten blocks *)
+      | s :: sl -> check_stmt ctrl s :: check_stmt_list ctrl sl
     (* Return a semantically-checked statement i.e. containing sexprs *)
-    and check_stmt = function
+    and check_stmt ctrl = function
       (* A block is correct if each statement is correct and nothing
          follows any Return statement.  Nested blocks are flattened. *)
-      | Block sl -> SBlock (check_stmt_list sl) (* A label treated as variable*)
-      | LabelS (lb, st) -> check_stmt st
+      | Block sl -> SBlock (check_stmt_list ctrl sl)
+      | LabelS (lb, st) -> check_stmt ctrl st
       | ExprS e -> SExprS (check_expr symbols e)
       | ReturnS e ->
         let el = List.map (check_expr symbols) e in
         if List.length e = 0
         then SReturnS el
         else (
+          (* Fix: each funciton has exactly one return value *)
           let t = fst (List.hd el) in
           if t = func.rtyp
           then SReturnS el
@@ -427,11 +435,11 @@ let check ((globals, units, utypes, functions) : program) =
           | Some v -> Some (check_expr symbols v)
         in
         let e = check_bool_expr expr in
-        let st1 = check_stmt stmt1 in
+        let st1 = check_stmt ctrl stmt1 in
         let st2 =
           match stmt2 with
           | None -> None
-          | Some v -> Some (check_stmt v)
+          | Some v -> Some (check_stmt ctrl v)
         in
         SIfS (sim, e, st1, st2)
       | SwitchS (simple, expr, casel) ->
@@ -445,13 +453,14 @@ let check ((globals, units, utypes, functions) : program) =
           | None -> None
           | Some v -> Some (check_expr symbols v)
         in
+        let s_ctrl = {can_break=true; can_continue=ctrl.can_continue; can_fall=true} in
         let sc =
           List.map
             (fun case ->
               match case with
               | CaseS (el, sl) ->
                 let el' = List.map (check_expr symbols) el in
-                let sl' = List.map check_stmt sl in
+                let sl' = check_stmt_list s_ctrl sl in
                 SCaseS (el', sl'))
             casel
         in
@@ -464,17 +473,19 @@ let check ((globals, units, utypes, functions) : program) =
         in
         (* add var to symbol table ? *)
         let e = check_expr symbols expr in
+        let c_ctrl = {can_break=true; can_continue=ctrl.can_continue; can_fall=true} in
         let mc =
           List.map
             (fun case ->
               match case with
               | MatchC (t, sl) ->
-                let sl' = List.map check_stmt sl in
+                let sl' = check_stmt_list c_ctrl sl in
                 SMatchC (t, sl'))
             matchl
         in
         SMatchS (sim, var, e, mc)
       | ForS (ftype, stmt) ->
+        let f_ctrl = {can_break=true; can_continue=true; can_fall=ctrl.can_fall} in
         let f =
           match ftype with
           | Condition c -> SCondition (check_expr symbols c)
@@ -482,7 +493,7 @@ let check ((globals, units, utypes, functions) : program) =
             let s =
               match stmt with
               | None -> None
-              | Some v -> Some (check_stmt v)
+              | Some v -> Some (check_stmt f_ctrl v)
             in
             let e =
               match expr with
@@ -497,15 +508,18 @@ let check ((globals, units, utypes, functions) : program) =
             SFClause (s, e, ss)
           | RClause (id, expr) -> SRClause (id, check_expr symbols expr)
         in
-        SForS (f, check_stmt stmt)
-      | LoopS ctrl ->
+        SForS (f, check_stmt f_ctrl stmt)
+      | LoopS loo ->
         let l =
-          match ctrl with
-          | BreakS b -> SBreakS b
-          | ContinueS c -> SContinueS c
+          match loo with
+          | BreakS b -> 
+            if ctrl.can_break then SBreakS b else raise (Failure ("break not in for/switch/match"))
+          | ContinueS c -> 
+            if ctrl.can_continue then SContinueS c else raise (Failure ("continue not in for statment"))
         in
         SLoopS l
-      | FallS _ -> SFallS 0
+      | FallS _ -> 
+        if ctrl.can_fall then SFallS 0 else raise (Failure ("fallthrough not in switch/match statment"))
       (* and check_simple_stmt = function
       | ExprS e -> SExprS (check_expr e) *)
     in
@@ -514,7 +528,7 @@ let check ((globals, units, utypes, functions) : program) =
     ; sfname = func.fname
     ; sformals = func.formals
     ; slocals = func.locals
-    ; sbody = check_stmt_list func.body
+    ; sbody = check_stmt_list {can_break=false; can_continue=false; can_fall=false} func.body
     }
   in
   let check_unit_decl unt =
