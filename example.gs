@@ -47,6 +47,8 @@ func main() int{
   x = 2 ^ 3;
   t = -b;
   t = 2.9 * 5.8 ^ 2 / 1.0;
+  student.name = "alice";
+  student.age = 12;
 
   /* unit auto checking and conversion */
   acc = vel / t;

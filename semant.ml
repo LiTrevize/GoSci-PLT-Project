@@ -73,6 +73,32 @@ let check ((globals, units, utypes, functions) : program) =
     try fst (StringMap.find s m) with
     | Not_found -> raise (Failure ("undeclared identifier " ^ s))
   in
+  let is_correct_field_in_bind target = function
+    | _, src, _ when src = target -> true
+    | _ -> false
+  in
+  let bind_of_struct_field s f m =
+    let binds =
+      try StringMap.find s m with
+      | Not_found -> raise (Failure ("undeclared struct " ^ s))
+    in
+    try List.find (is_correct_field_in_bind f) binds with
+    | Not_found -> raise (Failure ("undeclared field " ^ f ^ "in struct " ^ s))
+  in
+  let struct_of_var v m =
+    match
+      try fst (StringMap.find v m) with
+      | Not_found -> raise (Failure ("undeclared identifier " ^ v))
+    with
+    | UserType s -> s
+    | _ -> raise (Failure ("not struct " ^ v))
+  in
+  let type_of_var_field var f var_m struct_m =
+    let s = struct_of_var var var_m in
+    let b = bind_of_struct_field s f struct_m in
+    match b with
+    | t, _, _ -> t
+  in
   let unit_of_identifier s m =
     try snd (StringMap.find s m) with
     | Not_found -> raise (Failure ("undeclared identifier " ^ s))
@@ -84,6 +110,12 @@ let check ((globals, units, utypes, functions) : program) =
       else raise (Failure ("unit " ^ u ^ " not defined"))
     in
     List.rev (List.fold_left f [] uexpr)
+  in
+  let unit_of_var_field var f var_m struct_m =
+    let s = struct_of_var var var_m in
+    let b = bind_of_struct_field s f struct_m in
+    match b with
+    | _, _, u -> u
   in
   (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
@@ -252,6 +284,22 @@ let check ((globals, units, utypes, functions) : program) =
       in
       ( (check_type_assign lt rt err, check_unit_assign lu ru err)
       , SAssign (var, ((rt, ru), e')) )
+    | AssignField (var, f, e) as ex ->
+      let lt = type_of_var_field var f symbols global_structs
+      and lu = unit_of_var_field var f symbols global_structs
+      and (rt, ru), e' = check_expr symbols e in
+      let err =
+        "illegal assignment "
+        ^ string_of_typ lt
+        ^ string_of_unit_expr lu
+        ^ " = "
+        ^ string_of_typ rt
+        ^ string_of_unit_expr ru
+        ^ " in "
+        ^ string_of_expr ex
+      in
+      ( (check_type_assign lt rt err, check_unit_assign lu ru err)
+      , SAssignField (var, f, ((rt, ru), e')) )
     | Binop (e1, bop, e2) ->
       let (((t1, u1), e1') as se1) = check_expr symbols e1
       and (((t2, u2), e2') as se2) = check_expr symbols e2 in
