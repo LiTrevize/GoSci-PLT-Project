@@ -1,5 +1,4 @@
-/* The GCD algorithm in NanoC */
-/* TODO: change to GoSci */
+/* GoSci code */
 int a;
 /* float vel [m][s -1]; */
 
