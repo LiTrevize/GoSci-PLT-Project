@@ -17,11 +17,11 @@ module A = Ast
 open Sast
 module StringMap = Map.Make (String)
 
-type control_target = {
-  break_target: L.llbasicblock option;
-  continue_target: L.llbasicblock option;
-  fall_target: L.llbasicblock option;
-}
+type control_target =
+  { break_target : L.llbasicblock option
+  ; continue_target : L.llbasicblock option
+  ; fall_target : L.llbasicblock option
+  }
 
 (* translate : Sast.program -> Llvm.module *)
 let translate (globals, units, utypes, functions) =
@@ -157,7 +157,7 @@ let translate (globals, units, utypes, functions) =
       | SExprS e ->
         ignore (build_expr builder e);
         builder
-      | SLabelS _ -> raise (Failure ("Label statement is not implemented"))
+      | SLabelS _ -> raise (Failure "Label statement is not implemented")
       | SReturnS es ->
         (* Fix: each funciton has exactly one return value *)
         ignore (L.build_ret (build_expr builder (List.hd es)) builder);
@@ -165,8 +165,7 @@ let translate (globals, units, utypes, functions) =
       | SIfS (opt, predicate, then_stmt, else_stmt_opt) ->
         (match opt with
         | None -> ()
-        | Some exp -> ignore (build_expr builder exp)
-        );
+        | Some exp -> ignore (build_expr builder exp));
         let bool_val = build_expr builder predicate in
         let then_bb = L.append_block context "then" the_function in
         ignore (build_stmt target (L.builder_at_end context then_bb) then_stmt);
@@ -229,11 +228,15 @@ let translate (globals, units, utypes, functions) =
           let bool_val = build_expr cond_builder predicate in
           let loop_bb = L.append_block context "for_loop" the_function in
           let end_bb = L.append_block context "for_end" the_function in
-          let for_target = { 
-            break_target=Some end_bb; 
-            continue_target=Some cond_bb; 
-            fall_target=target.fall_target;} in
-          add_terminal (build_stmt for_target (L.builder_at_end context loop_bb) body) build_br_cond;
+          let for_target =
+            { break_target = Some end_bb
+            ; continue_target = Some cond_bb
+            ; fall_target = target.fall_target
+            }
+          in
+          add_terminal
+            (build_stmt for_target (L.builder_at_end context loop_bb) body)
+            build_br_cond;
           ignore (L.build_cond_br bool_val loop_bb end_bb cond_builder);
           L.builder_at_end context end_bb
         | SFClause (init_stmt, cond_expr, update_expr) ->
@@ -247,23 +250,26 @@ let translate (globals, units, utypes, functions) =
           let loop_bb = L.append_block context "for_loop" the_function in
           let update_bb = L.append_block context "for_update" the_function in
           let end_bb = L.append_block context "for_end" the_function in
-          let for_target = { 
-            break_target=Some end_bb; 
-            continue_target=Some update_bb; 
-            fall_target=target.fall_target;} in 
+          let for_target =
+            { break_target = Some end_bb
+            ; continue_target = Some update_bb
+            ; fall_target = target.fall_target
+            }
+          in
           (match cond_expr with
           | None -> ignore (L.build_br loop_bb cond_builder)
-          | Some expr -> 
+          | Some expr ->
             let bool_val = build_expr cond_builder expr in
             ignore (L.build_cond_br bool_val loop_bb end_bb cond_builder));
-          add_terminal (build_stmt for_target (L.builder_at_end context loop_bb) body) (L.build_br update_bb);
-          let update_builder =  L.builder_at_end context update_bb in
+          add_terminal
+            (build_stmt for_target (L.builder_at_end context loop_bb) body)
+            (L.build_br update_bb);
+          let update_builder = L.builder_at_end context update_bb in
           (match update_expr with
           | None -> ()
           | Some expr -> ignore (build_expr update_builder expr));
           ignore (build_br_cond update_builder);
           L.builder_at_end context end_bb
-
         | _ -> raise (Failure "Range-for clause Not implemented"))
       (* loop control statement is guaranteed to be the last statement within a block *)
       (* | SLoopS loo ->
@@ -272,7 +278,9 @@ let translate (globals, units, utypes, functions) =
           ) *)
       | _ -> raise (Failure "Statement Not Implemented")
     in
-    let default_target = {break_target=None; continue_target=None; fall_target=None;} in
+    let default_target =
+      { break_target = None; continue_target = None; fall_target = None }
+    in
     (* Build the code for each statement in the function *)
     let func_builder = build_stmt default_target builder (SBlock fdecl.sbody) in
     (* Add a return if the last block falls off the end *)
