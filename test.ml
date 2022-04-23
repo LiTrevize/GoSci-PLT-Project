@@ -177,120 +177,89 @@ let (test_cases_checker : (string * (string * sprogram)) list) =
             }
           ; empty_main
           ] ) ) )
-  ; ( "for"
-    , ( "func testfunc3 (int a, int b) int { for (a!=b){ a=a-b; } return a;} func main() \
-         int {}"
-      , ( []
-        , []
-        , []
-        , [ { srtyp = Int, []
-            ; sfname = "testfunc3"
-            ; sformals = [ Int, "a", []; Int, "b", [] ]
-            ; slocals = []
-            ; sbody =
-                [ SForS
-                    ( SCondition
-                        ( (Bool, [])
-                        , SBinop (((Int, []), SId "a"), Neq, ((Int, []), SId "b")) )
-                    , SBlock
-                        [ SExprS
-                            ( (Int, [])
-                            , SAssign
-                                ( "a"
-                                , ( (Int, [])
-                                  , SBinop
-                                      (((Int, []), SId "a"), Sub, ((Int, []), SId "b")) )
-                                ) )
-                        ] )
-                ; SReturnS [ (Int, []), SId "a" ]
-                ]
-            }
-          ; empty_main
-          ] ) ) )
+  ]
+;;
+
+let (test_cases_stmt_checker : (string * (string * sstmt list)) list) =
+  [ ( "for"
+    , ( "func main(int a, int b) int { for (a!=b){ a=a-b; } return a;}"
+      , [ SForS
+            ( SCondition
+                ((Bool, []), SBinop (((Int, []), SId "a"), Neq, ((Int, []), SId "b")))
+            , SBlock
+                [ SExprS
+                    ( (Int, [])
+                    , SAssign
+                        ( "a"
+                        , ( (Int, [])
+                          , SBinop (((Int, []), SId "a"), Sub, ((Int, []), SId "b")) ) )
+                    )
+                ] )
+        ; SReturnS [ (Int, []), SId "a" ]
+        ] ) )
   ; ( "if"
-    , ( "func testfunc4 (int a, int b) int { if (b< a) { a= a-b;} else { b= b-a;} return \
-         a;} func main() int {}"
-      , ( []
-        , []
-        , []
-        , [ { srtyp = Int, []
-            ; sfname = "testfunc4"
-            ; sformals = [ Int, "a", []; Int, "b", [] ]
-            ; slocals = []
-            ; sbody =
-                [ SIfS
-                    ( None
-                    , ( (Bool, [])
-                      , SBinop (((Int, []), SId "b"), Less, ((Int, []), SId "a")) )
-                    , SBlock
-                        [ SExprS
-                            ( (Int, [])
-                            , SAssign
-                                ( "a"
-                                , ( (Int, [])
-                                  , SBinop
-                                      (((Int, []), SId "a"), Sub, ((Int, []), SId "b")) )
-                                ) )
-                        ]
-                    , Some
-                        (SBlock
-                           [ SExprS
-                               ( (Int, [])
-                               , SAssign
-                                   ( "b"
-                                   , ( (Int, [])
-                                     , SBinop
-                                         (((Int, []), SId "b"), Sub, ((Int, []), SId "a"))
-                                     ) ) )
-                           ]) )
-                ; SReturnS [ (Int, []), SId "a" ]
+    , ( "func main(int a, int b) int { if (b< a) { a= a-b;} else { b= b-a;} return a;}"
+      , [ SIfS
+            ( None
+            , ((Bool, []), SBinop (((Int, []), SId "b"), Less, ((Int, []), SId "a")))
+            , SBlock
+                [ SExprS
+                    ( (Int, [])
+                    , SAssign
+                        ( "a"
+                        , ( (Int, [])
+                          , SBinop (((Int, []), SId "a"), Sub, ((Int, []), SId "b")) ) )
+                    )
                 ]
-            }
-          ; empty_main
-          ] ) ) )
+            , Some
+                (SBlock
+                   [ SExprS
+                       ( (Int, [])
+                       , SAssign
+                           ( "b"
+                           , ( (Int, [])
+                             , SBinop (((Int, []), SId "b"), Sub, ((Int, []), SId "a")) )
+                           ) )
+                   ]) )
+        ; SReturnS [ (Int, []), SId "a" ]
+        ] ) )
   ; ( "match"
-    , ( "func testfunc5 () int { char c; c = 'c'; match (v:=c) { case int: return 1; \
-         case float: return 2; default: break;}} func main() int {}"
-      , ( []
-        , []
-        , []
-        , [ { srtyp = Int, []
-            ; sfname = "testfunc5"
-            ; sformals = []
-            ; slocals = [ Char, "c", [] ]
-            ; sbody =
-                [ SExprS ((Char, []), SAssign ("c", ((Char, []), SCharLit 'c')))
-                ; SMatchS
-                    ( None
-                    , "v"
-                    , ((Char, []), SId "c")
-                    , [ SMatchC (Some Int, [ SReturnS [ (Int, []), SIntLit 1 ] ])
-                      ; SMatchC (Some Float, [ SReturnS [ (Int, []), SIntLit 2 ] ])
-                      ; SMatchC (None, [ SLoopS (SBreakS None) ])
-                      ] )
-                ]
-            }
-          ; empty_main
-          ] ) ) )
+    , ( "func main() int { char c; c = 'c'; match (v:=c) { case int: return 1; case \
+         float: return 2; default: break;}}"
+      , [ SExprS ((Char, []), SAssign ("c", ((Char, []), SCharLit 'c')))
+        ; SMatchS
+            ( None
+            , "v"
+            , ((Char, []), SId "c")
+            , [ SMatchC (Some Int, [ SReturnS [ (Int, []), SIntLit 1 ] ])
+              ; SMatchC (Some Float, [ SReturnS [ (Int, []), SIntLit 2 ] ])
+              ; SMatchC (None, [ SLoopS (SBreakS None) ])
+              ] )
+        ] ) )
   ]
 ;;
 
 let test_compiler =
+  let parse (s : string) = Gosciparse.program Scanner.token (Lexing.from_string s) in
+  let scheck (s : string) = Semant.check (parse s) in
   let map_parser (item : string * (string * program)) =
-    let parse (s : string) = Gosciparse.program Scanner.token (Lexing.from_string s) in
     "parser: " ^ fst item
     >:: fun _ -> assert_equal (snd (snd item)) (parse (fst (snd item)))
   in
   let test_param_parser = List.map map_parser test_cases_parser in
   let map_checker (item : string * (string * sprogram)) =
-    let scheck (s : string) =
-      Semant.check (Gosciparse.program Scanner.token (Lexing.from_string s))
-    in
     "checker: " ^ fst item
     >:: fun _ -> assert_equal (snd (snd item)) (scheck (fst (snd item)))
   in
   let test_param_checker = List.map map_checker test_cases_checker in
-  "test suite" >::: test_param_parser @ test_param_checker
+  let map_stmt_checker (item : string * (string * sstmt list)) =
+    let _, _, _, funcs = scheck (fst (snd item)) in
+    "checker: " ^ fst item
+    >:: fun _ ->
+    assert_equal (snd (snd item)) (List.find (fun f -> f.sfname = "main") funcs).sbody
+  in
+  let test_param_stmt_checker = List.map map_stmt_checker test_cases_stmt_checker in
+  "test suite" >::: test_param_parser @ test_param_checker @ test_param_stmt_checker
 ;;
 
 let _ = run_test_tt_main test_compiler
