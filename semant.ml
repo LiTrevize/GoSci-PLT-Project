@@ -42,9 +42,17 @@ let check ((globals, units, utypes, functions) : program) =
   let global_type_tuple =
     List.fold_left add_type (StringMap.empty, StringMap.empty) utypes
   in
+  (* Create global variable symbol table *)
   let global_vartypes = fst global_type_tuple in
   let global_structs = snd global_type_tuple in
-  (* Create global variable symbol table *)
+  let is_vartype = function
+    | UserType type_name -> StringMap.mem type_name global_vartypes
+    | _ -> false
+  in
+  let has_subtype vt t =
+    let typ_list = StringMap.find (string_of_typ vt) global_vartypes in
+    List.mem t typ_list
+  in
   let check_usertyped_var type_name =
     if (not (StringMap.mem type_name global_vartypes))
        && not (StringMap.mem type_name global_structs)
@@ -387,10 +395,10 @@ let check ((globals, units, utypes, functions) : program) =
       | Bool -> (t, u), e'
       | _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
     in
-    let rec check_stmt_list ctrl = function
+    let rec check_stmt_list symbols ctrl = function
       | [] -> []
       | FallS f :: s :: sl ->
-        ignore (check_stmt ctrl (FallS f));
+        ignore (check_stmt symbols ctrl (FallS f));
         raise (Failure "fallthough must be the last statement")
       (* 
       'break' will generate 'br END' and ignore all the remaining codes in the same block
@@ -399,18 +407,18 @@ let check ((globals, units, utypes, functions) : program) =
       | LoopS loo :: sl ->
         let l =
           match loo with
-          | BreakS b -> check_stmt ctrl (LoopS loo)
-          | ContinueS c -> check_stmt ctrl (LoopS loo)
+          | BreakS b -> check_stmt symbols ctrl (LoopS loo)
+          | ContinueS c -> check_stmt symbols ctrl (LoopS loo)
         in
         [ l ]
-      | Block sl :: sl' -> check_stmt_list ctrl (sl @ sl') (* Flatten blocks *)
-      | s :: sl -> check_stmt ctrl s :: check_stmt_list ctrl sl
+      | Block sl :: sl' -> check_stmt_list symbols ctrl (sl @ sl') (* Flatten blocks *)
+      | s :: sl -> check_stmt symbols ctrl s :: check_stmt_list symbols ctrl sl
     (* Return a semantically-checked statement i.e. containing sexprs *)
-    and check_stmt ctrl = function
+    and check_stmt symbols ctrl = function
       (* A block is correct if each statement is correct and nothing
          follows any Return statement.  Nested blocks are flattened. *)
-      | Block sl -> SBlock (check_stmt_list ctrl sl)
-      | LabelS (lb, st) -> check_stmt ctrl st
+      | Block sl -> SBlock (check_stmt_list symbols ctrl sl)
+      | LabelS (lb, st) -> check_stmt symbols ctrl st
       | ExprS e -> SExprS (check_expr symbols e)
       | ReturnS e ->
         let el = List.map (check_expr symbols) e in
@@ -438,11 +446,11 @@ let check ((globals, units, utypes, functions) : program) =
           | Some v -> Some (check_expr symbols v)
         in
         let e = check_bool_expr expr in
-        let st1 = check_stmt ctrl stmt1 in
+        let st1 = check_stmt symbols ctrl stmt1 in
         let st2 =
           match stmt2 with
           | None -> None
-          | Some v -> Some (check_stmt ctrl v)
+          | Some v -> Some (check_stmt symbols ctrl v)
         in
         SIfS (sim, e, st1, st2)
       | SwitchS (simple, expr, casel) ->
@@ -465,7 +473,7 @@ let check ((globals, units, utypes, functions) : program) =
               match case with
               | CaseS (el, sl) ->
                 let el' = List.map (check_expr symbols) el in
-                let sl' = check_stmt_list s_ctrl sl in
+                let sl' = check_stmt_list symbols s_ctrl sl in
                 SCaseS (el', sl'))
             casel
         in
@@ -477,20 +485,33 @@ let check ((globals, units, utypes, functions) : program) =
           | Some v -> Some (check_expr symbols v)
         in
         (* add var to symbol table ? *)
-        let e = check_expr symbols expr in
-        let c_ctrl =
-          { can_break = true; can_continue = ctrl.can_continue; can_fall = true }
-        in
-        let mc =
-          List.map
-            (fun case ->
-              match case with
-              | MatchC (t, sl) ->
-                let sl' = check_stmt_list c_ctrl sl in
-                SMatchC (t, sl'))
-            matchl
-        in
-        SMatchS (sim, var, e, mc)
+        let (((vt, ue), expr') as ce) = check_expr symbols expr in
+        if not (is_vartype vt)
+        then raise (Failure "match rhs expr must be a vartype variable")
+        else (
+          let c_ctrl =
+            { can_break = true; can_continue = ctrl.can_continue; can_fall = true }
+          in
+          let check_subtyp vt t =
+            if not (has_subtype vt t)
+            then
+              raise
+                (Failure (string_of_typ t ^ " is not included in " ^ string_of_typ vt))
+          in
+          let mc =
+            List.map
+              (fun case ->
+                match case with
+                | MatchC (Some t, sl) ->
+                  ignore (check_subtyp vt t);
+                  let sl' = check_stmt_list (add_var symbols (t, var, ue)) c_ctrl sl in
+                  SMatchC (Some t, sl')
+                | MatchC (None, sl) ->
+                  let sl' = check_stmt_list (add_var symbols (vt, var, ue)) c_ctrl sl in
+                  SMatchC (None, sl'))
+              matchl
+          in
+          SMatchS (sim, var, ce, mc))
       | ForS (ftype, stmt) ->
         let f_ctrl =
           { can_break = true; can_continue = true; can_fall = ctrl.can_fall }
@@ -502,7 +523,7 @@ let check ((globals, units, utypes, functions) : program) =
             let s =
               match stmt with
               | None -> None
-              | Some v -> Some (check_stmt f_ctrl v)
+              | Some v -> Some (check_stmt symbols f_ctrl v)
             in
             let e =
               match expr with
@@ -517,7 +538,7 @@ let check ((globals, units, utypes, functions) : program) =
             SFClause (s, e, ss)
           | RClause (id, expr) -> SRClause (id, check_expr symbols expr)
         in
-        SForS (f, check_stmt f_ctrl stmt)
+        SForS (f, check_stmt symbols f_ctrl stmt)
       | LoopS loo ->
         let l =
           match loo with
@@ -545,6 +566,7 @@ let check ((globals, units, utypes, functions) : program) =
     ; slocals = func.locals
     ; sbody =
         check_stmt_list
+          symbols
           { can_break = false; can_continue = false; can_fall = false }
           func.body
     }

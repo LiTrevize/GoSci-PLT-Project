@@ -265,7 +265,7 @@ and string_of_typ = function
   | Float -> "float"
   | Char -> "char"
   | Str -> "string"
-  | UserType type_name -> "UserType(" ^ type_name ^ ")"
+  | UserType type_name -> type_name
 ;;
 
 let string_of_bind ((t, id, units) : bind) =

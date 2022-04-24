@@ -91,21 +91,20 @@ let (test_cases_parser : (string * (string * program)) list) =
             }
           ] ) ) )
   ; ( "match"
-    , ( "func testfunc5 () int { char c; c = 'c'; match (v:=c) { case int: return 1; \
-         case float: return 2; default: break;}}"
+    , ( "vartype Num {int|float} func testfunc5 () int { Num n; match (v:=n) { case int: \
+         return 1; case float: return 2; default: break;}}"
       , ( []
         , []
-        , []
+        , [ VarType ("Num", [ Int; Float ]) ]
         , [ { rtyp = Int, []
             ; fname = "testfunc5"
             ; formals = []
-            ; locals = [ Char, "c", [] ]
+            ; locals = [ UserType "Num", "n", [] ]
             ; body =
-                [ ExprS (Assign ("c", CharLit 'c'))
-                ; MatchS
+                [ MatchS
                     ( None
                     , "v"
-                    , Id "c"
+                    , Id "n"
                     , [ MatchC (Some Int, [ ReturnS [ IntLit (1, []) ] ])
                       ; MatchC (Some Float, [ ReturnS [ IntLit (2, []) ] ])
                       ; MatchC (None, [ LoopS (BreakS None) ])
@@ -224,13 +223,12 @@ let (test_cases_stmt_checker : (string * (string * sstmt list)) list) =
         ; SReturnS [ (Int, []), SId "a" ]
         ] ) )
   ; ( "match"
-    , ( "func main() int { char c; c = 'c'; match (v:=c) { case int: return 1; case \
-         float: return 2; default: break;}}"
-      , [ SExprS ((Char, []), SAssign ("c", ((Char, []), SCharLit 'c')))
-        ; SMatchS
+    , ( "vartype Num {int|float} func main() int { Num n; match (v:=n) { case int: \
+         return 1; case float: return 2; default: break;}}"
+      , [ SMatchS
             ( None
             , "v"
-            , ((Char, []), SId "c")
+            , ((UserType "Num", []), SId "n")
             , [ SMatchC (Some Int, [ SReturnS [ (Int, []), SIntLit 1 ] ])
               ; SMatchC (Some Float, [ SReturnS [ (Int, []), SIntLit 2 ] ])
               ; SMatchC (None, [ SLoopS (SBreakS None) ])

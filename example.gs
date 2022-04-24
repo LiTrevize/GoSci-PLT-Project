@@ -76,11 +76,13 @@ func main() int{
       return x - 1;
   }
 
-  match (v := c) {
+  match (v := number) {
     case int:
-      return 1;
+      v = v + 1;
+      return v;
     case float:
-      return 2;
+      v = v * 2.0;
+      return -1;
     default:
       break;
   }
