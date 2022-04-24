@@ -266,6 +266,35 @@ let check ((globals, units, utypes, functions) : program) =
     | Id var ->
       ( (type_of_identifier var symbols, check_unit_expr (unit_of_identifier var symbols))
       , SId var )
+    | StructLit (name, el) as slit ->
+      let binds = StringMap.find name global_structs in
+      if List.length binds != List.length el
+      then
+        raise
+          (Failure
+             ("expecting "
+             ^ string_of_int (List.length binds)
+             ^ " expressions in "
+             ^ string_of_expr slit))
+      else (
+        let check_structlit (ft, _, fu) e =
+          let (et, eu), e' = check_expr symbols e in
+          let err =
+            "illegal field assignment "
+            ^ string_of_typ et
+            ^ " "
+            ^ string_of_unit_expr eu
+            ^ " expected "
+            ^ string_of_typ ft
+            ^ " "
+            ^ string_of_unit_expr fu
+            ^ " in "
+            ^ string_of_expr e
+          in
+          (check_type_assign ft et err, check_unit_assign fu eu err), e'
+        in
+        let el' = List.map2 check_structlit binds el in
+        (UserType name, []), SStructLit (name, el'))
     | FieldLit (v, f) ->
       ( ( type_of_var_field v f symbols global_structs
         , unit_of_var_field v f symbols global_structs )
