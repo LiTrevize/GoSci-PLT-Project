@@ -129,9 +129,12 @@ let check ((globals, units, utypes, functions) : program) =
            ^ " to "
            ^ string_of_unit_term (u2, i2)))
   in
-  let rec repeat item = function
-    | 1 -> [ item ]
-    | _ as n -> item :: repeat item (n - 1)
+  let rec repeat item n =
+    match n with
+    | 1 | -1 -> [ item ]
+    | _ when n > 1 -> item :: repeat item (n - 1)
+    | _ when n < 1 -> item :: repeat item (n + 1)
+    | _ -> raise (Failure "n must be non-zero")
   in
   let rec flatten_unit_expr = function
     | [] -> []
