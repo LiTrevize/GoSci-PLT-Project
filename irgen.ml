@@ -37,7 +37,7 @@ let translate (globals, units, utypes, functions) =
     | A.Int -> i32_t
     | A.Bool -> i1_t
     | A.Float -> float_t
-    | A.String -> string_t
+    | A.Str -> string_t
     | _ -> raise (Failure "Type Not Implemented")
   in
   (* Create a map of global variables after creating each *)
@@ -104,6 +104,8 @@ let translate (globals, units, utypes, functions) =
       match e with
       | SIntLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
+      | SStrLit s -> L.build_global_stringptr s "tmp_str" builder
+      | SFloatLit f -> L.const_float float_t f 
       | SId s -> L.build_load (lookup s) s builder
       | SAssign (s, e) ->
         let e' = build_expr builder e in
