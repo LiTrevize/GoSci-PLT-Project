@@ -96,7 +96,9 @@ let check ((globals, units, utypes, functions) : program) =
   (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
   let check_type_assign lvaluet rvaluet err =
-    if lvaluet = rvaluet then lvaluet else raise (Failure err)
+    if lvaluet = rvaluet || (is_vartype lvaluet && has_subtype lvaluet rvaluet)
+    then lvaluet
+    else raise (Failure err)
   in
   let check_unit_assign lu ru err =
     (* if lvaluet = rvaluet then lvaluet else raise (Failure err) *)
@@ -252,7 +254,7 @@ let check ((globals, units, utypes, functions) : program) =
       let err =
         "illegal assignment "
         ^ string_of_typ lt
-        ^ " = "
+        ^ " <- "
         ^ string_of_typ rt
         ^ string_of_unit_expr ru
         ^ " in "
