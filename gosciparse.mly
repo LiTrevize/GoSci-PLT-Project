@@ -315,6 +315,8 @@ continue_stmt:
 fall_through_stmt:
     FALL  { FallS(0) }
 
+structlit_expr:
+  UID LBRACE args_opt RBRACE {    StructLit ($1, $3)    }
 
 expr:
     ILIT unit_expr_opt  { IntLit($1, $2)         }
@@ -322,7 +324,8 @@ expr:
   | FLIT unit_expr_opt  { FloatLit($1, $2)       }
   | CLIT                { CharLit($1)            }
   | SLIT                { StrLit($1)             }
-  | LID                  { Id($1)                 }
+  | LID                 { Id($1)                 }
+  | LID DOT LID         { FieldLit($1,   $3)     }
   | expr PLUS   expr    { Binop($1, Add,   $3)   }
   | expr MINUS  expr    { Binop($1, Sub,   $3)   }
   | expr MUL    expr    { Binop($1, Mul,   $3)   }
@@ -342,6 +345,8 @@ expr:
   // | INC    expr         { Unaop(Inc,       $2)   }
   // | DEC    expr         { Unaop(Dec,       $2)   }
   | LID ASSIGN expr      { Assign($1,       $3)   }
+  | LID ASSIGN structlit_expr {Assign($1,       $3)   }
+  | LID DOT LID ASSIGN expr      { AssignField($1,   $3,    $5)   }
   | LPAREN expr RPAREN  { Paren(           $2)   }
   /* call */
   | LID LPAREN args_opt RPAREN { Call ($1, $3)  }

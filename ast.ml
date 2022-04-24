@@ -44,9 +44,12 @@ type expr =
   | CharLit of char
   | StrLit of string
   | Id of string
+  | FieldLit of string * string
+  | StructLit of string * expr list
   | Binop of expr * bop * expr
   | Unaop of uop * expr
   | Assign of string * expr
+  | AssignField of string * string * expr (* var field expr *)
   | Paren of expr
   (* function call *)
   | Call of string * expr list
@@ -148,10 +151,14 @@ let rec string_of_expr = function
   | CharLit l -> String.make 1 l
   | StrLit l -> l
   | Id s -> s
+  | StructLit (name, expr_list) ->
+    name ^ "{" ^ String.concat ", " (List.map string_of_expr expr_list) ^ "}"
+  | FieldLit (v, f) -> v ^ "." ^ f
   | Binop (e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_expr e2
   | Unaop (o, e) -> string_of_uop o ^ string_of_expr e
   | Assign (v, e) -> v ^ " = " ^ string_of_expr e
+  | AssignField (v, f, e) -> v ^ "." ^ f ^ " = " ^ string_of_expr e
   | Paren e -> "(" ^ string_of_expr e ^ ")"
   | Call (f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 ;;
