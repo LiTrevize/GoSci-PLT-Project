@@ -132,37 +132,48 @@ let translate (globals, units, utypes, functions) =
 
         if t1 = A.Int && t2 = A.Int then 
           (match op with
-        | A.Add     -> L.build_add
-        | A.Sub     -> L.build_sub
-        | A.Mul     -> L.build_mul
-        | A.Div     -> L.build_sdiv
-        | A.Mod     -> L.build_srem
-        | A.And     -> L.build_and
-        | A.Or      -> L.build_or
-        | A.Equal   -> L.build_icmp L.Icmp.Eq
-        | A.Neq     -> L.build_icmp L.Icmp.Ne
-        | A.Less    -> L.build_icmp L.Icmp.Slt
-        | A.Leq     -> L.build_icmp L.Icmp.Sle
-        | A.Great   -> L.build_icmp L.Icmp.Sgt
-        | A.Geq     -> L.build_icmp L.Icmp.Sge
-        | _         -> raise (Failure "illegal binary operation")
-        ) e1' e2' "tmp" builder 
+          | A.Add     -> L.build_add
+          | A.Sub     -> L.build_sub
+          | A.Mul     -> L.build_mul
+          | A.Div     -> L.build_sdiv
+          | A.Mod     -> L.build_srem
+          | A.Equal   -> L.build_icmp L.Icmp.Eq
+          | A.Neq     -> L.build_icmp L.Icmp.Ne
+          | A.Less    -> L.build_icmp L.Icmp.Slt
+          | A.Leq     -> L.build_icmp L.Icmp.Sle
+          | A.Great   -> L.build_icmp L.Icmp.Sgt
+          | A.Geq     -> L.build_icmp L.Icmp.Sge
+          | _         -> raise (Failure "illegal binary operation")
+          ) e1' e2' "tmp" builder 
         else if t1 = A.Float || t2 = A.Float then
           (match op with
-        | A.Add     -> L.build_fadd
-        | A.Sub     -> L.build_fsub
-        | A.Mul     -> L.build_fmul
-        | A.Div     -> L.build_fdiv
-        | A.Mod     -> L.build_srem    
-        | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
-        | A.Neq     -> L.build_fcmp L.Fcmp.One
-        | A.Less    -> L.build_fcmp L.Fcmp.Olt
-        | A.Leq     -> L.build_fcmp L.Fcmp.Ole
-        | A.Great   -> L.build_fcmp L.Fcmp.Ogt
-        | A.Geq     -> L.build_fcmp L.Fcmp.Oge
-        | _ -> raise (Failure ("illegal usage of operator " ^ 
-                        (A.string_of_bop op) ^ " on float")))
-          e1' e2' "tmp" builder
+          | A.Add     -> L.build_fadd
+          | A.Sub     -> L.build_fsub
+          | A.Mul     -> L.build_fmul
+          | A.Div     -> L.build_fdiv
+          | A.Mod     -> L.build_srem    
+          | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+          | A.Neq     -> L.build_fcmp L.Fcmp.One
+          | A.Less    -> L.build_fcmp L.Fcmp.Olt
+          | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+          | A.Great   -> L.build_fcmp L.Fcmp.Ogt
+          | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+          | _ -> raise (Failure ("illegal usage of operator " ^ (A.string_of_bop op) ^ " on float"))
+          ) e1' e2' "tmp" builder
+        else if t1 = A.Bool && t2 = A.Bool then
+          (match op with
+          | A.And    -> L.build_and
+          | A.Or     -> L.build_or 
+          | A.Equal  -> L.build_icmp L.Icmp.Eq 
+          | A.Neq    -> L.build_icmp L.Icmp.Ne
+          | _        ->  raise (Failure "illegal boolean binary operation")
+          ) e1' e2' "tmp" builder
+        else if t1 = A.Char && t2 = A.Char then
+          (match op with
+          | A.Equal -> L.build_icmp L.Icmp.Eq
+          | A.Neq -> L.build_icmp L.Icmp.Ne
+          | _        ->  raise (Failure "illegal char binary operation")
+          ) e1' e2' "tmp" builder
         else (
           print_endline (A.string_of_typ t1) ;
           print_endline (A.string_of_typ t2) ;
