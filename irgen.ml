@@ -100,7 +100,7 @@ let translate (globals, units, utypes, functions) =
       | Not_found -> StringMap.find n global_vars
     in
     (* Construct code for an expression; return its value *)
-    let rec build_expr builder ((_, e) : sexpr) : L.llvalue =
+    let rec build_expr builder (((typ, _), e) : sexpr) : L.llvalue =
       match e with
       | SIntLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
@@ -125,13 +125,28 @@ let translate (globals, units, utypes, functions) =
         let e1' = build_expr builder e1
         and e2' = build_expr builder e2 in
         (match op with
-        | A.Add -> L.build_add
-        | A.Sub -> L.build_sub
+        | A.Add when typ = Int   -> L.build_add
+        | A.Add when typ = Float -> L.build_fadd
+        | A.Sub when typ = Int   -> L.build_sub
+        | A.Sub when typ = Float -> L.build_fsub
+        | A.Mul when typ = Int   -> L.build_mul
+        | A.Mul when typ = Float -> L.build_fmul
+        | A.Div when typ = Int   -> L.build_sdiv 
+        | A.Div when typ = Float -> L.build_fdiv
         | A.And -> L.build_and
         | A.Or -> L.build_or
-        | A.Equal -> L.build_icmp L.Icmp.Eq
-        | A.Neq -> L.build_icmp L.Icmp.Ne
-        | A.Less -> L.build_icmp L.Icmp.Slt
+        | A.Equal when typ = Int -> L.build_icmp L.Icmp.Eq
+        | A.Equal when typ = Float -> L.build_fcmp L.Fcmp.Oeq
+        | A.Geq when typ = Int -> L.build_icmp L.Icmp.Sge
+        | A.Geq when typ = Float-> L.build_fcmp L.Fcmp.Oge
+        | A.Neq when typ = Int -> L.build_icmp L.Icmp.Ne
+        | A.Neq when typ = Float-> L.build_fcmp L.Fcmp.One
+        | A.Leq when typ = Int -> L.build_icmp L.Icmp.Sle
+        | A.Leq when typ = Float-> L.build_fcmp L.Fcmp.Ole
+        | A.Less when typ = Int -> L.build_icmp L.Icmp.Slt
+        | A.Less when typ = Float -> L.build_fcmp L.Fcmp.Olt
+        | A.Great when typ = Int -> L.build_icmp L.Icmp.Sgt
+        | A.Great when typ = Float -> L.build_fcmp L.Fcmp.Ogt
         | _ -> raise (Failure "Operator Not Implemented"))
           e1'
           e2'
