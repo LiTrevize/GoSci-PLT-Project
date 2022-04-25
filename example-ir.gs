@@ -30,20 +30,21 @@ func gcd(int a, int b) int {
 
 func main() int{
   int a;
-  /* float b;
+  float b;
   char c;
-  string s; */
+  string s; 
   bool flag;
   int x;
   int i;
-  /* float t [s];
+  float t [s];
   float acc [m][s -2];
-  Num number;
+  /* Num number;
   Person student; */
   
   a = 10;
-  /* b = 18.1;
-  x = 2 ^ 3;
+  b = 18.1;
+  x = 2 + 3;
+  /* x = 2 ^ 3;
   t = -b;
   t = 2.9 * 5.8 ^ 2 / 1.0; */
 

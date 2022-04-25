@@ -116,36 +116,57 @@ let translate (globals, units, utypes, functions) =
         ignore (L.build_store e' (lookup s) builder);
         (* store e' to the address of s *)
         e'
-      | SUnaop(op, ((t, _) as e)) ->
+      | SUnaop(op, (((t,_), _) as e)) ->
         let v = build_expr builder e in 
         (match op with
-          | A.Neg when typ = Int -> L.build_neg
-          | A.Neg when typ = Float -> L.build_fneg 
+          | A.Neg when t = A.Int -> L.build_neg
+          | A.Neg when t = A.Float -> L.build_fneg 
           | A.Not -> L.build_not
           | _ -> raise (Failure "Unary Operator Not Implemented"))
         v "tmp" builder 
       | SBinop (e1, op, e2) ->
-        let e1' = build_expr builder e1
+        let (t1, _), _ = e1
+        and (t2, _), _ = e2
+        and e1' = build_expr builder e1
         and e2' = build_expr builder e2 in
-        (match op with
-        | A.Add when typ = Int   -> L.build_add
-        | A.Add when typ = Float -> L.build_fadd
-        | A.Sub when typ = Int   -> L.build_sub
-        | A.Sub when typ = Float -> L.build_fsub
-        | A.Mul when typ = Int   -> L.build_mul
-        | A.Mul when typ = Float -> L.build_fmul
-        | A.Div when typ = Int   -> L.build_sdiv 
-        | A.Div when typ = Float -> L.build_fdiv
-        | A.And -> L.build_and
-        | A.Or -> L.build_or
-        | A.Equal -> L.build_icmp L.Icmp.Eq
-        | A.Neq -> L.build_icmp L.Icmp.Ne
-        | A.Less -> L.build_icmp L.Icmp.Slt
-        | _ -> raise (Failure "Operator Not Implemented"))
-          e1'
-          e2'
-          "tmp"
-          builder
+
+        if t1 = A.Int && t2 = A.Int then 
+          (match op with
+        | A.Add     -> L.build_add
+        | A.Sub     -> L.build_sub
+        | A.Mul     -> L.build_mul
+        | A.Div     -> L.build_sdiv
+        | A.Mod     -> L.build_srem
+        | A.And     -> L.build_and
+        | A.Or      -> L.build_or
+        | A.Equal   -> L.build_icmp L.Icmp.Eq
+        | A.Neq     -> L.build_icmp L.Icmp.Ne
+        | A.Less    -> L.build_icmp L.Icmp.Slt
+        | A.Leq     -> L.build_icmp L.Icmp.Sle
+        | A.Great   -> L.build_icmp L.Icmp.Sgt
+        | A.Geq     -> L.build_icmp L.Icmp.Sge
+        | _         -> raise (Failure "illegal binary operation")
+        ) e1' e2' "tmp" builder 
+        else if t1 = A.Float || t2 = A.Float then
+          (match op with
+        | A.Add     -> L.build_fadd
+        | A.Sub     -> L.build_fsub
+        | A.Mul     -> L.build_fmul
+        | A.Div     -> L.build_fdiv
+        | A.Mod     -> L.build_srem    
+        | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+        | A.Neq     -> L.build_fcmp L.Fcmp.One
+        | A.Less    -> L.build_fcmp L.Fcmp.Olt
+        | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+        | A.Great   -> L.build_fcmp L.Fcmp.Ogt
+        | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+        | _ -> raise (Failure ("illegal usage of operator " ^ 
+                        (A.string_of_bop op) ^ " on float")))
+          e1' e2' "tmp" builder
+        else (
+          print_endline (A.string_of_typ t1) ;
+          print_endline (A.string_of_typ t2) ;
+          raise (Failure "Binary Expression Not Implemented") )
       | SCall ("print", [ e ]) ->
         L.build_call
           printf_func
