@@ -8,17 +8,18 @@ let empty_main =
 
 let (test_cases_parser : (string * (string * program)) list) =
   [ ( "global int variable declaration without unit"
-    , ("int a;", ([ Int, "a", [] ], [], [], [])) )
+    , ("int a = 1;", ([ Int, "a", [], Some (IntLit (1, [])) ], [], [], [])) )
   ; ( "global float variable declaration without unit"
-    , ("float b;", ([ Float, "b", [] ], [], [], [])) )
+    , ("float b;", ([ Float, "b", [], None ], [], [], [])) )
   ; ( "global char variable declaration without unit"
-    , ("char c;", ([ Char, "c", [] ], [], [], [])) )
+    , ("char c;", ([ Char, "c", [], None ], [], [], [])) )
   ; ( "global string variable declaration without unit"
-    , ("string s;", ([ Str, "s", [] ], [], [], [])) )
+    , ("string s;", ([ Str, "s", [], None ], [], [], [])) )
   ; ( "global bool variable declaration without unit"
-    , ("bool flag;", ([ Bool, "flag", [] ], [], [], [])) )
+    , ("bool flag;", ([ Bool, "flag", [], None ], [], [], [])) )
   ; ( "global variable declaration with unit"
-    , ("float vel [m 1][s -1];", ([ Float, "vel", [ "m", 1; "s", -1 ] ], [], [], [])) )
+    , ("float vel [m 1][s -1];", ([ Float, "vel", [ "m", 1; "s", -1 ], None ], [], [], []))
+    )
   ; "empty unit", ("unit U {}", ([], [ "U", BaseUnit ], [], []))
   ; ( "Non-empty unit"
     , ("unit km { 1000 m}", ([], [ "km", CUnit (IntLit (1000, []), "m") ], [], [])) )
@@ -26,7 +27,10 @@ let (test_cases_parser : (string * (string * program)) list) =
     , ("vartype Num {int | float}", ([], [], [ VarType ("Num", [ Int; Float ]) ], [])) )
   ; ( "Struct declaration"
     , ( "struct Person {string name; int age;}"
-      , ([], [], [ StructType ("Person", [ Str, "name", []; Int, "age", [] ]) ], []) ) )
+      , ( []
+        , []
+        , [ StructType ("Person", [ Str, "name", [], None; Int, "age", [], None ]) ]
+        , [] ) ) )
   ; ( "function declaration"
     , ( "func testfunc1 (int a, int b) int {return a;}"
       , ( []
@@ -34,7 +38,7 @@ let (test_cases_parser : (string * (string * program)) list) =
         , []
         , [ { rtyp = Int, []
             ; fname = "testfunc1"
-            ; formals = [ Int, "a", []; Int, "b", [] ]
+            ; formals = [ Int, "a", [], None; Int, "b", [], None ]
             ; locals = []
             ; body = [ ReturnS [ Id "a" ] ]
             }
@@ -46,8 +50,8 @@ let (test_cases_parser : (string * (string * program)) list) =
         , []
         , [ { rtyp = Int, []
             ; fname = "testfunc2"
-            ; formals = [ Int, "a", []; Int, "b", [] ]
-            ; locals = [ Int, "c", [] ]
+            ; formals = [ Int, "a", [], None; Int, "b", [], None ]
+            ; locals = [ Int, "c", [], None ]
             ; body =
                 [ ExprS (Assign ("c", Binop (Id "a", Add, Id "b"))); ReturnS [ Id "c" ] ]
             }
@@ -59,7 +63,7 @@ let (test_cases_parser : (string * (string * program)) list) =
         , []
         , [ { rtyp = Int, []
             ; fname = "testfunc3"
-            ; formals = [ Int, "a", []; Int, "b", [] ]
+            ; formals = [ Int, "a", [], None; Int, "b", [], None ]
             ; locals = []
             ; body =
                 [ ForS
@@ -77,7 +81,7 @@ let (test_cases_parser : (string * (string * program)) list) =
         , []
         , [ { rtyp = Int, []
             ; fname = "testfunc4"
-            ; formals = [ Int, "a", []; Int, "b", [] ]
+            ; formals = [ Int, "a", [], None; Int, "b", [], None ]
             ; locals = []
             ; body =
                 [ IfS
@@ -99,7 +103,7 @@ let (test_cases_parser : (string * (string * program)) list) =
         , [ { rtyp = Int, []
             ; fname = "testfunc5"
             ; formals = []
-            ; locals = [ UserType "Num", "n", [] ]
+            ; locals = [ UserType "Num", "n", [], None ]
             ; body =
                 [ MatchS
                     ( None
@@ -121,7 +125,7 @@ let (test_cases_parser : (string * (string * program)) list) =
         , [ { rtyp = Int, []
             ; fname = "testfunc6"
             ; formals = []
-            ; locals = [ Int, "x", [] ]
+            ; locals = [ Int, "x", [], None ]
             ; body =
                 [ ExprS (Assign ("x", IntLit (1, [])))
                 ; SwitchS
@@ -139,18 +143,20 @@ let (test_cases_parser : (string * (string * program)) list) =
 
 let (test_cases_checker : (string * (string * sprogram)) list) =
   [ ( "global variable declaration"
-    , ("int a; func main() int {}", ([ Int, "a", [] ], [], [], [ empty_main ])) )
+    , ("int a; func main() int {}", ([ Int, "a", [], None ], [], [], [ empty_main ])) )
   ; ( "global float variable declaration without unit"
-    , ("float b; func main() int {}", ([ Float, "b", [] ], [], [], [ empty_main ])) )
+    , ("float b; func main() int {}", ([ Float, "b", [], None ], [], [], [ empty_main ]))
+    )
   ; ( "global char variable declaration without unit"
-    , ("char c; func main() int {}", ([ Char, "c", [] ], [], [], [ empty_main ])) )
+    , ("char c; func main() int {}", ([ Char, "c", [], None ], [], [], [ empty_main ])) )
   ; ( "global string variable declaration without unit"
-    , ("string s; func main() int {}", ([ Str, "s", [] ], [], [], [ empty_main ])) )
+    , ("string s; func main() int {}", ([ Str, "s", [], None ], [], [], [ empty_main ])) )
   ; ( "global bool variable declaration without unit"
-    , ("bool flag; func main() int {}", ([ Bool, "flag", [] ], [], [], [ empty_main ])) )
+    , ( "bool flag; func main() int {}"
+      , ([ Bool, "flag", [], None ], [], [], [ empty_main ]) ) )
   ; ( "global variable declaration with unit"
     , ( "float vel [m 1][s -1]; func main() int {}"
-      , ([ Float, "vel", [ "m", 1; "s", -1 ] ], [], [], [ empty_main ]) ) )
+      , ([ Float, "vel", [ "m", 1; "s", -1 ], None ], [], [], [ empty_main ]) ) )
   ; ( "Non-empty unit"
     , ( "unit km { 1000 m } func main() int {}"
       , ([], [ "km", SCUnit (((Int, []), SIntLit 1000), "m") ], [], [ empty_main ]) ) )
@@ -161,7 +167,7 @@ let (test_cases_checker : (string * (string * sprogram)) list) =
     , ( "struct Person {string name; int age;} func main() int {}"
       , ( []
         , []
-        , [ SStructType ("Person", [ Str, "name", []; Int, "age", [] ]) ]
+        , [ SStructType ("Person", [ Str, "name", [], None; Int, "age", [], None ]) ]
         , [ empty_main ] ) ) )
   ; ( "function declaration"
     , ( "func testfunc1 (int a, int b) int {return a;} func main() int {}"
@@ -170,7 +176,7 @@ let (test_cases_checker : (string * (string * sprogram)) list) =
         , []
         , [ { srtyp = Int, []
             ; sfname = "testfunc1"
-            ; sformals = [ Int, "a", []; Int, "b", [] ]
+            ; sformals = [ Int, "a", [], None; Int, "b", [], None ]
             ; slocals = []
             ; sbody = [ SReturnS [ (Int, []), SId "a" ] ]
             }

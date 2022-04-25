@@ -20,6 +20,8 @@ and sx =
   (* call *)
   | SCall of string * sexpr list
 
+type sbind = typ * string * unit_expr * sexpr option
+
 (* type ssimple_stmt = SExprS of sexpr *)
 (* | SIncS of sexpr * uop
    | SAssignment of sexpr list * aop * sexpr list *)
@@ -67,12 +69,12 @@ type sutype_def =
 type sfunc_def =
   { srtyp : typ * unit_expr
   ; sfname : string
-  ; sformals : bind list
-  ; slocals : bind list
+  ; sformals : sbind list
+  ; slocals : sbind list
   ; sbody : sstmt list
   }
 
-type sprogram = bind list * sunit_def list * sutype_def list * sfunc_def list
+type sprogram = sbind list * sunit_def list * sutype_def list * sfunc_def list
 
 (* Pretty-printing functions *)
 let rec string_of_sexpr (((t, u), e) : sexpr) =
@@ -99,6 +101,20 @@ let rec string_of_sexpr (((t, u), e) : sexpr) =
     | SCall (f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")")
   ^ ")"
 ;;
+
+let string_of_sbind ((t, id, units, init_sexpr) : sbind) =
+  string_of_typ t
+  ^ " "
+  ^ id
+  ^ " "
+  ^ String.concat "" (List.map string_of_unit_term units)
+  ^
+  match init_sexpr with
+  | Some e -> " = " ^ string_of_sexpr e
+  | None -> ""
+;;
+
+let string_of_svdecl (bnd : sbind) = string_of_sbind bnd ^ ";\n"
 
 let rec string_of_sstmt = function
   | SLabelS (label, stmt) -> label ^ string_of_sstmt stmt
@@ -213,9 +229,9 @@ and string_of_sfdecl (fdecl : sfunc_def) =
   ^ " "
   ^ fdecl.sfname
   ^ "("
-  ^ String.concat ", " (List.map string_of_bind fdecl.sformals)
+  ^ String.concat ", " (List.map string_of_sbind fdecl.sformals)
   ^ ")\n{\n"
-  ^ String.concat "" (List.map string_of_vdecl fdecl.slocals)
+  ^ String.concat "" (List.map string_of_svdecl fdecl.slocals)
   ^ String.concat "" (List.map string_of_sstmt fdecl.sbody)
   ^ "}\n"
 ;;
@@ -252,7 +268,7 @@ let string_of_sutype (utype : sutype_def) =
 
 let string_of_sprogram ((vars, units, utypes, funcs) : sprogram) =
   "\n\nSementically checked program: \n\n"
-  ^ String.concat "" (List.map string_of_vdecl vars)
+  ^ String.concat "" (List.map string_of_svdecl vars)
   ^ "\n"
   ^ String.concat "\n" (List.map string_of_sudecl units)
   ^ "\n"

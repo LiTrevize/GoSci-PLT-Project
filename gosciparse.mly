@@ -58,7 +58,8 @@ ID:
 
 /* int x */
 vdecl:
-  typ LID unit_expr_opt { ($1, $2, $3) }
+  |typ LID unit_expr_opt  { ($1, $2, $3, None) }
+  |typ LID unit_expr_opt ASSIGN expr {($1, $2, $3, Some($5))}
 
 typ:
     INT    { Int    }
