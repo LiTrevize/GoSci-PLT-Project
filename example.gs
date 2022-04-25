@@ -1,6 +1,6 @@
 /* GoSci code */
-int a;
-float vel [m][s -1];
+int a = 1;
+float vel [m][s -1] = 2.5;
 
 unit U {}
 
@@ -29,25 +29,20 @@ func gcd(int a, int b) int {
 }
 
 func main() int{
-  int a;
-  float b;
+  int a = 10;
+  float b = 18.1;
   char c;
   string s;
   bool flag;
-  int x;
-  int i;
-  float t [s];
+  int x = (a/5)^3;
+  int i = 0;
+  float t [s] = -b;
   float acc [m][s -2];
   float acc2 [km][s -2];
-  Num number;
+  Num number = 2.5;
   Person student;
   
-  a = 10;
-  b = 18.1;
-  x = 2 ^ 3;
-  t = -b;
   t = 2.9 * 5.8 ^ 2 / 1.0;
-  number = 2.5;
   student = Person{"superman", 9999};
   student.name = "alice";
   student.age = 12;

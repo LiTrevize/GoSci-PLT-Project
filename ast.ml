@@ -93,7 +93,9 @@ and ftype =
   | RClause of string * expr
 
 (* int x [m][s -2]: name binding *)
-type bind = typ * string * unit_expr
+(* type bind = typ * string * unit_expr *)
+
+type bind = typ * string * unit_expr * expr option
 
 (* func_def: ret_typ fname formals locals body *)
 type func_def =
@@ -275,8 +277,16 @@ and string_of_typ = function
   | UserType type_name -> type_name
 ;;
 
-let string_of_bind ((t, id, units) : bind) =
-  string_of_typ t ^ " " ^ id ^ " " ^ String.concat "" (List.map string_of_unit_term units)
+let string_of_bind ((t, id, units, init_expr) : bind) =
+  string_of_typ t
+  ^ " "
+  ^ id
+  ^ " "
+  ^ String.concat "" (List.map string_of_unit_term units)
+  ^
+  match init_expr with
+  | Some e -> " = " ^ string_of_expr e
+  | None -> ""
 ;;
 
 let rec string_of_shape = function
