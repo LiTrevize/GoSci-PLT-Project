@@ -44,9 +44,9 @@ func main() int{
   a = 10;
   b = 18.1;
   x = 2 + 3;
-  /* x = 2 ^ 3;
+  x = 2 ^ 3;
   t = -b;
-  t = 2.9 * 5.8 ^ 2 / 1.0; */
+  t = 2.9 * 5.8 ^ 2 / 1.0;
 
   /* unit auto checking and conversion */
   /* acc = vel / t;
@@ -54,10 +54,10 @@ func main() int{
   acc * vel;  /* [m 2][s -3] */
   acc / acc;  /* [] */ */
   
-  /* c = 'c';
+  c = 'c';
   s = "helloworld";
   flag = (true && (!false)) || false;
-  !flag; */
+  !flag; 
   
   /* for (i = 0; i < a; i=i+1) {
     print(i);
