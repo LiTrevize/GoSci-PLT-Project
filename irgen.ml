@@ -38,6 +38,7 @@ let translate (globals, units, utypes, functions) =
     | A.Bool -> i1_t
     | A.Float -> float_t
     | A.Str -> string_t
+    | A.Char -> i8_t
     | _ -> raise (Failure "Type Not Implemented")
   in
   (* Create a map of global variables after creating each *)
@@ -117,7 +118,8 @@ let translate (globals, units, utypes, functions) =
         let v = build_expr builder e in 
         let t = L.type_of v in 
         (match op with
-          | A.Neg -> L.build_neg
+          | A.Neg when typ = Int -> L.build_neg
+          | A.Neg when typ = Float -> L.build_fneg 
           | A.Not -> L.build_icmp L.Icmp.Ne (L.const_int t 0)
           | _ -> raise (Failure "Operator Not Implemented"))
         v "tmp" builder 
