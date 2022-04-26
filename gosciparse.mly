@@ -26,7 +26,7 @@ open Ast
 %start tokenseq
 %type <Ast.tokenseq> tokenseq
 
-%right ASSIGN
+%right ASSIGN INC DEC
 %left OR
 %left AND
 %left EQ NEQ
@@ -34,7 +34,7 @@ open Ast
 %left PLUS MINUS
 %left MUL DIV MOD
 %left POW
-%right NOT Neg Inc Dec
+%right NOT Neg
 
 %%
 
@@ -343,9 +343,9 @@ expr:
   | expr OR     expr    { Binop($1, Or,    $3)   }
   | NOT    expr         { Unaop(Not,       $2)   }
   | MINUS  expr         { Unaop(Neg,       $2)   }
-  // | INC    expr         { Unaop(Inc,       $2)   }
-  // | DEC    expr         { Unaop(Dec,       $2)   }
-  | LID ASSIGN expr      { Assign($1,       $3)   }
+  | expr INC             { IoDop($1,      Inc )   }
+  | expr DEC             { IoDop($1,      Dec )   }
+  | LID ASSIGN expr     { Assign($1,       $3)   }
   | LID ASSIGN structlit_expr {Assign($1,       $3)   }
   | LID DOT LID ASSIGN expr      { AssignField($1,   $3,    $5)   }
   | LPAREN expr RPAREN  { Paren(           $2)   }
@@ -402,6 +402,8 @@ one_token:
   | NOT      { "NOT" }
   | AND      { "AND" }
   | OR       { "OR" }
+  | INC      { "INC" }
+  | DEC      { "DEC" }
   /* Keywords */
   | VAR       { "VAR" }
   | CONST     { "CONST" }

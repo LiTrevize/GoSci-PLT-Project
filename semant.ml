@@ -422,14 +422,31 @@ let check ((globals, units, utypes, functions) : program) =
       let t =
         match uop with
         | Neg when t = Int || t = Float -> t
-        | Inc when t = Int || t = Float -> t
-        | Dec when t = Int || t = Float -> t
         | Not when t = Bool -> Bool
         | _ -> raise (Failure err)
       in
       let check_unit_uop u uop = u in
       let uu = check_unit_uop u uop in
       (t, uu), SUnaop (uop, ((t, u), e'))
+    | IoDop (e, iodop) as ex ->
+      let (t, u), e' = check_expr symbols e in
+      let err =
+        "illegal type for inc or dec operator "
+        ^ string_of_typ t
+        ^ string_of_unit_expr u
+        ^ " "
+        ^ string_of_iodop iodop
+        ^ " in "
+        ^ string_of_expr ex
+      in
+      let t =
+        match iodop with
+        | (Inc | Dec) when t = Int -> t
+        | _ -> raise (Failure err)
+      in
+      let check_unit_uop u iodop = u in
+      let uu = check_unit_uop u iodop in
+      (t, uu), SIodop (((t, u), e'), iodop)
     | Call (fname, args) as call ->
       let fd = find_func fname in
       let param_length = List.length fd.formals in
