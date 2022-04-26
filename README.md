@@ -59,3 +59,14 @@ Scan, parse, semantic check, then generate llvm code
 - `main.ml`: top-level file to test and run the compiler
 - `example.gs`: a sample GoSci source code
 - `test.ml`: all test cases
+
+### Format Source Code
+Install Dependency
+```
+opam install ocamlformat
+```
+
+Format the source file and replace with corrected versions, detailed instruction can go to [Dune's manual](https://dune.readthedocs.io/en/stable/formatting.html#formatting-a-project).
+```
+dune build @fmt --auto-promote
+```
