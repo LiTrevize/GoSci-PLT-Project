@@ -461,10 +461,10 @@ let check ((globals, units, utypes, functions) : program) =
         let args' = List.map2 check_call fd.formals args in
         fd.rtyp, SCall (fname, args'))
   in
-  (* let check_bind_init symbols (t,v,u,e) = 
-    let e' = check_expr e
-    in (t,v,u,e')
-  in *)
+  (* let check_bind_init symbols (t,v,u,e) =
+       let e' = check_expr e
+       in (t,v,u,e')
+     in *)
   let check_binds_init symbols (binds : bind list) =
     let f (symbols, sbinds) ((t, v, u, e) : bind) =
       let e' =
@@ -502,9 +502,9 @@ let check ((globals, units, utypes, functions) : program) =
       | FallS f :: s :: sl ->
         ignore (check_stmt symbols ctrl (FallS f));
         raise (Failure "fallthough must be the last statement")
-      (* 
-      'break' will generate 'br END' and ignore all the remaining codes in the same block
-      'continue' will generate 'br Cond' or 'br Update' and ignore all the remaining codes in the same block
+      (*
+         'break' will generate 'br END' and ignore all the remaining codes in the same block
+         'continue' will generate 'br Cond' or 'br Update' and ignore all the remaining codes in the same block
       *)
       | LoopS loo :: sl ->
         let l =
@@ -663,7 +663,7 @@ let check ((globals, units, utypes, functions) : program) =
         then SFallS 0
         else raise (Failure "fallthrough not in switch/match statment")
       (* and check_simple_stmt = function
-      | ExprS e -> SExprS (check_expr e) *)
+         | ExprS e -> SExprS (check_expr e) *)
     in
     (* body of check_func *)
     { srtyp = func.rtyp

@@ -121,9 +121,9 @@ let rec string_of_sstmt = function
   | SExprS expr ->
     string_of_sexpr expr ^ "\n"
     (* | SIncS(expr, uop) -> string_of_sexpr expr ^ string_of_uop uop ^ "\n"
-             | SAssignment(exprs1, aop, exprs2) ->
-               String.concat "" (List.map string_of_sexpr exprs1) ^ string_of_aop aop ^
-               String.concat "" (List.map string_of_sexpr exprs2) ^ "\n" *)
+               | SAssignment(exprs1, aop, exprs2) ->
+                 String.concat "" (List.map string_of_sexpr exprs1) ^ string_of_aop aop ^
+                 String.concat "" (List.map string_of_sexpr exprs2) ^ "\n" *)
   | SBlock stmts -> "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
   | SReturnS expr ->
     (match expr with

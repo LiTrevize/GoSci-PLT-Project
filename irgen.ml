@@ -9,7 +9,6 @@
 
    http://llvm.moe/
    http://llvm.moe/ocaml/
-
 *)
 
 module L = Llvm
@@ -53,9 +52,9 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
   let printf_func : L.llvalue = L.declare_function "printf" printf_t the_module in
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
-  let poweri_t : L.lltype = L.function_type i32_t [|i32_t; i32_t|] in
+  let poweri_t : L.lltype = L.function_type i32_t [| i32_t; i32_t |] in
   let poweri_func : L.llvalue = L.declare_function "pow" poweri_t the_module in
-  let powerf_t : L.lltype = L.function_type float_t [|float_t; float_t|] in
+  let powerf_t : L.lltype = L.function_type float_t [| float_t; float_t |] in
   let powerf_func : L.llvalue = L.declare_function "pow" powerf_t the_module in
   let function_decls : (L.llvalue * sfunc_def) StringMap.t =
     let function_decl m fdecl =
@@ -135,54 +134,64 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         and e1' = build_expr builder e1
         and e2' = build_expr builder e2 in
         if t1 = A.Int && t2 = A.Int
-        then
+        then (
           match op with
-          | A.Add     -> L.build_add e1' e2' "tmp" builder 
-          | A.Sub     -> L.build_sub e1' e2' "tmp" builder 
-          | A.Mul     -> L.build_mul e1' e2' "tmp" builder 
-          | A.Div     -> L.build_sdiv e1' e2' "tmp" builder 
-          | A.Mod     -> L.build_srem e1' e2' "tmp" builder 
-          | A.Pow     -> L.build_call poweri_func [|e1'; e2'|] "exp" builder
-          | A.Equal   -> L.build_icmp L.Icmp.Eq e1' e2' "tmp" builder 
-          | A.Neq     -> L.build_icmp L.Icmp.Ne e1' e2' "tmp" builder 
-          | A.Less    -> L.build_icmp L.Icmp.Slt e1' e2' "tmp" builder 
-          | A.Leq     -> L.build_icmp L.Icmp.Sle e1' e2' "tmp" builder 
-          | A.Great   -> L.build_icmp L.Icmp.Sgt e1' e2' "tmp" builder 
-          | A.Geq     -> L.build_icmp L.Icmp.Sge e1' e2' "tmp" builder 
-          | _         -> raise (Failure "illegal binary operation")
-        else if t1 = A.Float || t2 = A.Float then
+          | A.Add -> L.build_add e1' e2' "tmp" builder
+          | A.Sub -> L.build_sub e1' e2' "tmp" builder
+          | A.Mul -> L.build_mul e1' e2' "tmp" builder
+          | A.Div -> L.build_sdiv e1' e2' "tmp" builder
+          | A.Mod -> L.build_srem e1' e2' "tmp" builder
+          | A.Pow -> L.build_call poweri_func [| e1'; e2' |] "exp" builder
+          | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "tmp" builder
+          | A.Neq -> L.build_icmp L.Icmp.Ne e1' e2' "tmp" builder
+          | A.Less -> L.build_icmp L.Icmp.Slt e1' e2' "tmp" builder
+          | A.Leq -> L.build_icmp L.Icmp.Sle e1' e2' "tmp" builder
+          | A.Great -> L.build_icmp L.Icmp.Sgt e1' e2' "tmp" builder
+          | A.Geq -> L.build_icmp L.Icmp.Sge e1' e2' "tmp" builder
+          | _ -> raise (Failure "illegal binary operation"))
+        else if t1 = A.Float || t2 = A.Float
+        then (
           match op with
-          | A.Add     -> L.build_fadd e1' e2' "tmp" builder
-          | A.Sub     -> L.build_fsub e1' e2' "tmp" builder
-          | A.Mul     -> L.build_fmul e1' e2' "tmp" builder
-          | A.Div     -> L.build_fdiv e1' e2' "tmp" builder
-          | A.Mod     -> L.build_srem e1' e2' "tmp" builder
-          | A.Pow     -> 
+          | A.Add -> L.build_fadd e1' e2' "tmp" builder
+          | A.Sub -> L.build_fsub e1' e2' "tmp" builder
+          | A.Mul -> L.build_fmul e1' e2' "tmp" builder
+          | A.Div -> L.build_fdiv e1' e2' "tmp" builder
+          | A.Mod -> L.build_srem e1' e2' "tmp" builder
+          | A.Pow ->
             let _e1' = L.build_sitofp e1' float_t "cast" builder
             and _e2' = L.build_sitofp e2' float_t "cast" builder in
-            L.build_call powerf_func [|_e1'; _e2'|] "exp" builder
-          | A.Equal   -> L.build_fcmp L.Fcmp.Oeq e1' e2' "tmp" builder
-          | A.Neq     -> L.build_fcmp L.Fcmp.One e1' e2' "tmp" builder
-          | A.Less    -> L.build_fcmp L.Fcmp.Olt e1' e2' "tmp" builder
-          | A.Leq     -> L.build_fcmp L.Fcmp.Ole e1' e2' "tmp" builder
-          | A.Great   -> L.build_fcmp L.Fcmp.Ogt e1' e2' "tmp" builder
-          | A.Geq     -> L.build_fcmp L.Fcmp.Oge e1' e2' "tmp" builder
-          | _ -> raise (Failure ("illegal usage of operator " ^ (A.string_of_bop op) ^ " on float"))
-          
-        else if t1 = A.Bool && t2 = A.Bool then
+            L.build_call powerf_func [| _e1'; _e2' |] "exp" builder
+          | A.Equal -> L.build_fcmp L.Fcmp.Oeq e1' e2' "tmp" builder
+          | A.Neq -> L.build_fcmp L.Fcmp.One e1' e2' "tmp" builder
+          | A.Less -> L.build_fcmp L.Fcmp.Olt e1' e2' "tmp" builder
+          | A.Leq -> L.build_fcmp L.Fcmp.Ole e1' e2' "tmp" builder
+          | A.Great -> L.build_fcmp L.Fcmp.Ogt e1' e2' "tmp" builder
+          | A.Geq -> L.build_fcmp L.Fcmp.Oge e1' e2' "tmp" builder
+          | _ ->
+            raise
+              (Failure ("illegal usage of operator " ^ A.string_of_bop op ^ " on float")))
+        else if t1 = A.Bool && t2 = A.Bool
+        then
           (match op with
-          | A.And    -> L.build_and
-          | A.Or     -> L.build_or 
-          | A.Equal  -> L.build_icmp L.Icmp.Eq 
-          | A.Neq    -> L.build_icmp L.Icmp.Ne
-          | _        ->  raise (Failure "illegal boolean binary operation")
-          ) e1' e2' "tmp" builder
-        else if t1 = A.Char && t2 = A.Char then
+          | A.And -> L.build_and
+          | A.Or -> L.build_or
+          | A.Equal -> L.build_icmp L.Icmp.Eq
+          | A.Neq -> L.build_icmp L.Icmp.Ne
+          | _ -> raise (Failure "illegal boolean binary operation"))
+            e1'
+            e2'
+            "tmp"
+            builder
+        else if t1 = A.Char && t2 = A.Char
+        then
           (match op with
           | A.Equal -> L.build_icmp L.Icmp.Eq
           | A.Neq -> L.build_icmp L.Icmp.Ne
-          | _        ->  raise (Failure "illegal char binary operation")
-          ) e1' e2' "tmp" builder
+          | _ -> raise (Failure "illegal char binary operation"))
+            e1'
+            e2'
+            "tmp"
+            builder
         else (
           print_endline (A.string_of_typ t1);
           print_endline (A.string_of_typ t2);
