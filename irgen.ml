@@ -118,16 +118,6 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         ignore (L.build_store e' (lookup s) builder);
         (* store e' to the address of s *)
         e'
-      | SUnaop (op, (((t, _), _) as e)) ->
-        let v = build_expr builder e in
-        (match op with
-        | A.Neg when t = A.Int -> L.build_neg
-        | A.Neg when t = A.Float -> L.build_fneg
-        | A.Not -> L.build_not
-        | _ -> raise (Failure "Unary Operator Not Implemented"))
-          v
-          "tmp"
-          builder
       | SBinop (e1, op, e2) ->
         let (t1, _), _ = e1
         and (t2, _), _ = e2
@@ -196,6 +186,25 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           print_endline (A.string_of_typ t1);
           print_endline (A.string_of_typ t2);
           raise (Failure "Binary Expression Not Implemented"))
+      | SUnaop (op, (((t, _), _) as e)) ->
+        let v = build_expr builder e in
+        (match op with
+        | A.Neg when t = A.Int -> L.build_neg
+        | A.Neg when t = A.Float -> L.build_fneg
+        | A.Not -> L.build_not
+        | _ -> raise (Failure "Unary Operator Not Implemented"))
+          v
+          "tmp"
+          builder
+      | SIodop (e1, op) ->
+        let (t, _), _ = e1
+        and e1' = build_expr builder e1 
+        and one = build_expr builder ((Int, []), SIntLit(1))
+      in
+        (match op with
+        | A.Inc when t = A.Int -> L.build_add e1' one "tmp" builder
+        | A.Dec when t = A.Int -> L.build_sub e1' one "tmp" builder
+        | _ -> raise (Failure "Illegal Increment/Decrement Operation"))
       | SCall ("print", [ e ]) ->
         L.build_call
           printf_func

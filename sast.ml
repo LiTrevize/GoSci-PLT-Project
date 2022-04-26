@@ -15,6 +15,7 @@ and sx =
   | SStructLit of string * sexpr list
   | SBinop of sexpr * bop * sexpr
   | SUnaop of uop * sexpr
+  | SIodop of sexpr * iodop
   | SAssign of string * sexpr
   | SAssignField of string * string * sexpr
   (* call *)
@@ -96,6 +97,7 @@ let rec string_of_sexpr (((t, u), e) : sexpr) =
     | SBinop (e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_sexpr e2
     | SUnaop (o, e) -> string_of_uop o ^ " " ^ string_of_sexpr e
+    | SIodop (e, o) -> string_of_sexpr e ^ " " ^ string_of_iodop o
     | SAssign (v, e) -> v ^ " = " ^ string_of_sexpr e
     | SAssignField (v, f, e) -> v ^ "." ^ f ^ " = " ^ string_of_sexpr e
     | SCall (f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")")

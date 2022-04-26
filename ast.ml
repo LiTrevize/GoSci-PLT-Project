@@ -17,10 +17,12 @@ type bop =
   | Less
 
 type uop =
-  | Inc
-  | Dec
   | Not
   | Neg
+
+type iodop =
+  | Inc
+  | Dec
 
 type typ =
   | Int
@@ -48,6 +50,7 @@ type expr =
   | StructLit of string * expr list
   | Binop of expr * bop * expr
   | Unaop of uop * expr
+  | IoDop of expr * iodop
   | Assign of string * expr
   | AssignField of string * string * expr (* var field expr *)
   | Paren of expr
@@ -139,10 +142,13 @@ let string_of_unit_term (name, exp) = "[" ^ name ^ " " ^ string_of_int exp ^ "]"
 let string_of_unit_expr uexpr = String.concat "" (List.map string_of_unit_term uexpr)
 
 let string_of_uop = function
-  | Inc -> "++"
-  | Dec -> "--"
   | Not -> "!"
   | Neg -> "-"
+;;
+
+let string_of_iodop = function
+  | Inc -> "++"
+  | Dec -> "--"
 ;;
 
 let rec string_of_expr = function
@@ -159,6 +165,7 @@ let rec string_of_expr = function
   | Binop (e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_bop o ^ " " ^ string_of_expr e2
   | Unaop (o, e) -> string_of_uop o ^ string_of_expr e
+  | IoDop (e, op) -> string_of_expr e ^ " " ^ string_of_iodop op
   | Assign (v, e) -> v ^ " = " ^ string_of_expr e
   | AssignField (v, f, e) -> v ^ "." ^ f ^ " = " ^ string_of_expr e
   | Paren e -> "(" ^ string_of_expr e ^ ")"
