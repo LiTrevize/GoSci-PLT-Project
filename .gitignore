@@ -31,3 +31,7 @@ _opam/
 # ocamlyacc build files
 *.mli
 gosciparse.ml
+.output
+
+# macos related files
+.DS_Store
