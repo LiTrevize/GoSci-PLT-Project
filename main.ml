@@ -30,12 +30,17 @@ let _ =
       let ir = Irgen.translate sprogram in
       print_string (Llvm.string_of_llmodule ir))
     else if Sys.argv.(1) = "codegen"
-    then (
-      let program = Gosciparse.program Scanner.token lexbuf in
-      let sprogram = Semant.check program in
-      let ir = Irgen.translate sprogram in
-      Llvm.print_module "tmp.ll" ir;
-      ignore (Sys.command "llc tmp.ll -o tmp.s"))
+    then
+      if Array.length Sys.argv >= 3
+      then (
+        let program = Gosciparse.program Scanner.token lexbuf in
+        let sprogram = Semant.check program in
+        let ir = Irgen.translate sprogram in
+        Llvm.print_module "tmp.ll" ir;
+        let fn = Sys.argv.(2) in
+        let _ = Sys.command ("llc tmp.ll -o " ^ fn) in
+        ignore (Sys.command "rm tmp.ll"))
+      else raise (Failure "Must specify output filename for action compile")
     else if Sys.argv.(1) = "compile"
     then
       if Array.length Sys.argv >= 3
@@ -48,7 +53,8 @@ let _ =
         if retcode = 0
         then (
           let fn = Sys.argv.(2) in
-          ignore (Sys.command ("gcc -o " ^ fn ^ " tmp.s")))
+          let _ = Sys.command ("gcc -o " ^ fn ^ " tmp.s") in
+          ignore (Sys.command "rm tmp.ll tmp.s"))
         else raise (Failure "Failed to generate assembly code"))
       else raise (Failure "Must specify output filename for action compile")
     else if Sys.argv.(1) = "run"
@@ -56,8 +62,9 @@ let _ =
       let program = Gosciparse.program Scanner.token lexbuf in
       let sprogram = Semant.check program in
       let ir = Irgen.translate sprogram in
-      Llvm.print_module "tmpir.ll" ir;
-      ignore (Sys.command "lli tmpir.ll"))
+      Llvm.print_module "tmp.ll" ir;
+      let _ = Sys.command "lli tmp.ll" in
+      ignore (Sys.command "rm tmp.ll"))
     else
       raise
         (Failure
