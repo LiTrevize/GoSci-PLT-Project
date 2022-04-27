@@ -1,6 +1,15 @@
 # GoSci-PLT-Project
 
-### Test the GoSci compiler
+## Prerequisite
+| Tool | Installation |
+| --- | --- |
+| opam | `apt install opam` |
+| llvm | `apt install llvm` |
+| gcc | `apt install gcc` |
+
+
+## Test the GoSci compiler
+### Unit Test
 Install ounit2 package:
 ```
 opam install ounit2
@@ -21,46 +30,43 @@ Run all test cases:
 ./test.native
 ```
 
-### Build the GoSci compiler
 
+
+## Run the GoSci compiler
+Build the GoSci compiler
 ```
 ocamlbuild -pkgs llvm main.native
 ```
 
-### Run the GoSci compiler
+Run the GoSci compiler
 
-Scan only:
 ```
-./main.native scan
+./main.native <action>
 ```
-
-Scan then parse
-```
-./main.native parse
-```
-
-Scan, parse, then semantic check
-```
-./main.native scheck
-```
-
-Scan, parse, semantic check, then generate llvm code
-```
-./main.native irgen
-```
+And `action` can be:
+- `scan`: generate sequence of tokens
+- `parse`: generate the abstract syntax tree (AST)
+- `scheck`: generate a semantically-checked AST
+- `irgen`: generate LLVM code
+- `codegen`: generate assembly code
+- `compile`: generate executable
+- `run`: compile then execute the program
 
 ### Compiler files
 -  `ast.ml`: abstract syntax tree (AST)
 -  `scanner.mll`: scanner
 -  `gosciparse.mly`: parser
+-  `sast.ml`: semantically-checked AST (sAST)
+-  `semant.ml`: turn an AST to an sAST
+-  `irgen.ml`: turn sAST to llvm module
+-  `main.ml`: top-level file to run the compiler
+-  `test.ml`: test cases for unit tests
 
 ### Other files
 
-- `main.ml`: top-level file to test and run the compiler
 - `example.gs`: a sample GoSci source code
-- `test.ml`: all test cases
 
-### Format Source Code
+## Format Source Code
 Install Dependency
 ```
 opam install ocamlformat
