@@ -392,8 +392,6 @@ one_token:
   | MOD      { "MOD" }
   | POW      { "POW" }
   | MATMUL   { "MATMUL" }
-  | INC      { "INC" }
-  | DEC      { "DEC" }
   | ASSIGN   { "ASSIGN" }
   | IASSIGN  { "IASSIGN" }
   | EQ       { "EQ" }
