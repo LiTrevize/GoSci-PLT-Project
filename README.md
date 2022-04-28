@@ -7,17 +7,16 @@
 | llvm | `apt install llvm` |
 | gcc | `apt install gcc` |
 
+Install llvm package for OCaml:
+```
+opam install llvm
+```
 
 ## Test the GoSci compiler
 ### Unit Test
 Install ounit2 package:
 ```
 opam install ounit2
-```
-
-Install llvm package:
-```
-opam install llvm
 ```
 
 Build test code:
@@ -28,6 +27,18 @@ ocamlbuild -use-ocamlfind -pkgs ounit2 test.native
 Run all test cases:
 ```
 ./test.native
+```
+
+Or simply run:
+```
+./run_unit_tests.sh
+```
+
+### Integration Test
+
+All test cases are in directory `test_cases`, where `*.gs` are the source programs and `*.out` are the expected output. To run all test cases:
+```
+./run_integration_tests.sh
 ```
 
 
@@ -41,15 +52,15 @@ ocamlbuild -pkgs llvm main.native
 Run the GoSci compiler
 
 ```
-./main.native <action>
+./main.native <action> [outfile]
 ```
 And `action` can be:
 - `scan`: generate sequence of tokens
 - `parse`: generate the abstract syntax tree (AST)
 - `scheck`: generate a semantically-checked AST
 - `irgen`: generate LLVM code
-- `codegen`: generate assembly code
-- `compile`: generate executable
+- `codegen`: generate assembly code `<outfile>.s`
+- `compile`: generate executable with filename `outfile`
 - `run`: compile then execute the program
 
 ### Compiler files

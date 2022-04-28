@@ -38,7 +38,7 @@ let _ =
         let ir = Irgen.translate sprogram in
         Llvm.print_module "tmp.ll" ir;
         let fn = Sys.argv.(2) in
-        let _ = Sys.command ("llc tmp.ll -o " ^ fn) in
+        let _ = Sys.command ("llc tmp.ll -o " ^ fn ^ ".s") in
         ignore (Sys.command "rm tmp.ll"))
       else raise (Failure "Must specify output filename for action compile")
     else if Sys.argv.(1) = "compile"
