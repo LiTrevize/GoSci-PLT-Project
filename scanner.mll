@@ -6,7 +6,8 @@ let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z']
 let letter_lower = ['a'-'z']
 let letter_upper = ['A'-'Z']
-let char_lit = digit | letter
+let special = [' ' ',' '.' '!' '?']
+let char_lit = digit | letter | special
 let exp = ('e'|'E') ('+'|'-')? digit+
 let float_lit = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
 

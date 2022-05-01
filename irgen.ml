@@ -73,6 +73,9 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
     let the_function, _ = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
+    let float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
+    let char_format_str = L.build_global_stringptr "%c\n" "fmt" builder in
+    let str_format_str = L.build_global_stringptr "%s\n" "fmt" builder in
     (* Construct the function's "locals": formal arguments and locally
        declared variables.  Allocate each on the stack, initialize their
        value, if appropriate, and remember their values in the "locals" map *)
@@ -198,9 +201,8 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           builder
       | SIodop (e1, op) ->
         let (t, _), _ = e1
-        and e1' = build_expr builder e1 
-        and one = build_expr builder ((Int, []), SIntLit(1))
-      in
+        and e1' = build_expr builder e1
+        and one = build_expr builder ((Int, []), SIntLit 1) in
         (match op with
         | A.Inc when t = A.Int -> L.build_add e1' one "tmp" builder
         | A.Dec when t = A.Int -> L.build_sub e1' one "tmp" builder
@@ -208,7 +210,18 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       | SCall ("print", [ e ]) ->
         L.build_call
           printf_func
-          [| int_format_str; build_expr builder e |]
+          [| (match fst (fst e) with
+             | Int | Bool -> int_format_str
+             | Float -> float_format_str
+             | Char -> char_format_str
+             | Str -> str_format_str
+             | _ ->
+               raise
+                 (Failure
+                    ("print() cannot take argument of type "
+                    ^ A.string_of_typ (fst (fst e)))))
+           ; build_expr builder e
+          |]
           "printf"
           builder
       | SCall (f, args) ->

@@ -128,7 +128,9 @@ let check ((globals, units, utypes, functions) : program) =
   (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
   let check_type_assign lvaluet rvaluet err =
-    if lvaluet = rvaluet || (is_vartype lvaluet && has_subtype lvaluet rvaluet)
+    if lvaluet = UserType "Any"
+    then rvaluet
+    else if lvaluet = rvaluet || (is_vartype lvaluet && has_subtype lvaluet rvaluet)
     then lvaluet
     else raise (Failure err)
   in
@@ -240,7 +242,7 @@ let check ((globals, units, utypes, functions) : program) =
       "print"
       { rtyp = Int, []
       ; fname = "print"
-      ; formals = [ Int, "x", [], None ]
+      ; formals = [ UserType "Any", "x", [], None ]
       ; locals = []
       ; body = []
       }

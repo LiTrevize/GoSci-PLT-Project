@@ -7,7 +7,7 @@ for src in test_cases/*.gs; do
     out=${src:0:$len-3}.out
     expect=$(cat $out)
     got=$(./main.native run < $src)
-    if [ $expect != $got ]; then
+    if [ "$expect" != "$got" ]; then
         flag=1
         echo "ERROR in $src: want $expect, got $got"
     fi
