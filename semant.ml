@@ -619,6 +619,17 @@ let check ((globals, units, utypes, functions) : program) =
               raise
                 (Failure (string_of_typ t ^ " is not included in " ^ string_of_typ vt))
           in
+          (* check last case is default *)
+          let rec check_last matchl =
+            match matchl with
+            | [] -> ()
+            | [ hd ] ->
+              (match hd with
+              | MatchC (Some t, _) -> raise (Failure "Last case in match must be default")
+              | MatchC (None, _) -> ())
+            | hd :: tl -> check_last tl
+          in
+          check_last matchl;
           let mc =
             List.map
               (fun case ->
