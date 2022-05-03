@@ -21,7 +21,7 @@ let _ =
     in
     let codegen filename =
       irgen "tmp.ll";
-      let retcode = Sys.command ("llc -relocation-model=pic tmp.ll -o " ^ filename) in
+      let retcode = Sys.command ("llc  -O0 -relocation-model=pic tmp.ll -o " ^ filename) in
       let _ = Sys.command "rm tmp.ll" in
       retcode
     in
