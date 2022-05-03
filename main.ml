@@ -10,12 +10,12 @@ let _ =
           'scheck', 'irgen', 'codegen', 'compile', or 'run'")
   else (
     let lexbuf = Lexing.from_channel stdin in
-    let scheck =
+    let scheck lexbuf =
       let program = Gosciparse.program Scanner.token lexbuf in
       Semant.check program
     in
     let irgen filename =
-      let sprogram = scheck in
+      let sprogram = scheck lexbuf in
       let ir = Irgen.translate sprogram in
       Llvm.print_module filename ir
     in
@@ -43,11 +43,11 @@ let _ =
       print_endline (string_of_program program))
     else if Sys.argv.(1) = "scheck"
     then (
-      let sprogram = scheck in
+      let sprogram = scheck lexbuf in
       print_endline (string_of_sprogram sprogram))
     else if Sys.argv.(1) = "irgen"
     then (
-      let sprogram = scheck in
+      let sprogram = scheck lexbuf in
       let ir = Irgen.translate sprogram in
       print_string (Llvm.string_of_llmodule ir))
     else if Sys.argv.(1) = "codegen"
