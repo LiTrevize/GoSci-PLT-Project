@@ -36,7 +36,7 @@ let check ((globals, units, utypes, functions) : program) =
   (* Create user type table *)
   let add_type tuple = function
     | VarType (name, type_list) -> StringMap.add name type_list (fst tuple), snd tuple
-    | StructType (name, bind_list) -> fst tuple, StringMap.add name bind_list (snd tuple)
+    | StructType (name, binds) -> fst tuple, StringMap.add name binds (snd tuple)
     | _ -> tuple
   in
   let global_type_tuple =
@@ -721,9 +721,32 @@ let check ((globals, units, utypes, functions) : program) =
     | AUnit l -> fst unt, SAUnit l
     | CUnit (e, id) -> fst unt, SCUnit (check_num_expr e, id)
   in
+  let check_fields (binds : (typ * string * unit_expr * expr option) list) : sbind list =
+    let rec dups = function
+      | [] -> ()
+      | (_, n1, _, _) :: (_, n2, _, _) :: _ when n1 = n2 ->
+        raise (Failure ("duplicate field" ^ " " ^ n1))
+      | _ :: t -> dups t
+    in
+    let f ((t, v, u, e) : bind) : sbind =
+      let e' =
+        match e with
+        | Some ee ->
+          raise (Failure "Initialize the field with expression is not supported yet!")
+          (* TODO *)
+        | None -> None
+      in
+      t, v, u, e'
+    in
+    let sbinds = List.map f binds in
+    dups (List.sort (fun (_, a, _, _) (_, b, _, _) -> compare a b) binds);
+    sbinds
+  in
   let check_utype = function
     | VarType (name, type_list) -> SVarType (name, type_list)
-    | StructType (name, bind_list) -> SStructType (name, bind_list)
+    | StructType (name, binds) ->
+      let sbinds = check_fields binds in
+      SStructType (name, sbinds)
     | TensorType (name, shape_list) -> STensorType (name, shape_list)
     | ArrType (name, shape_list) -> SArrType (name, shape_list)
   in
