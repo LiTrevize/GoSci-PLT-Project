@@ -62,7 +62,7 @@ type sunit_def = string * sunit_prop
 
 type sutype_def =
   | SVarType of string * typ list
-  | SStructType of string * bind list
+  | SStructType of string * sbind list
   | STensorType of string * shapeList
   | SArrType of string * shapeList
 
@@ -257,11 +257,11 @@ let string_of_sutype (utype : sutype_def) =
     ^ " {\n"
     ^ String.concat " | " (List.map string_of_typ type_list)
     ^ "\n}\n"
-  | SStructType (name, bind_list) ->
+  | SStructType (name, sbinds) ->
     "StructType("
     ^ name
     ^ ") {\n"
-    ^ String.concat " | " (List.map string_of_bind bind_list)
+    ^ String.concat " | " (List.map string_of_sbind sbinds)
     ^ "\n}\n"
   | STensorType (name, shape_list) ->
     "TensorType" ^ string_of_shape shape_list ^ name ^ "\n"

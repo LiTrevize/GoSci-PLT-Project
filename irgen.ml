@@ -48,14 +48,14 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
     List.fold_left global_var StringMap.empty sglobals
   in
   (* Return the LLVM type for any GoSci type *)
-  (* let ltype_of_native_typ = function
+  let ltype_of_native_typ = function
     | A.Int -> i32_t
     | A.Bool -> i1_t
     | A.Float -> float_t
     | A.Str -> string_t
     | A.Char -> i8_t
-    | _ as t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " is not a native type"))
-  in *)
+    | _ as t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " is not a supported type"))
+  in
   let size_of_native_typ = function
     | A.Int -> 32
     | A.Bool -> 1
@@ -83,6 +83,41 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
     in
     List.fold_left add_vartype StringMap.empty utypes
   in
+  (* Build a map from a struct name to its llvm type *)
+  let struct_map : L.lltype StringMap.t =
+    let add_struct m = function
+      | SStructType (name, sbinds) ->
+        let struct_t = L.named_struct_type context name in
+        let struct_body =
+          Array.of_list
+            (List.map (fun (t, v) -> ltype_of_native_typ t) (unitless_bind_list sbinds))
+        in
+        L.struct_set_body struct_t struct_body false;
+        StringMap.add name struct_t m
+      | _ -> m
+    in
+    List.fold_left add_struct StringMap.empty utypes
+  in
+  (* Build a map from struct name to its field names *)
+  let struct_field_map : string list StringMap.t =
+    let add_field m = function
+      | SStructType (name, sbinds) ->
+        let fields = List.map (fun (t, v, u, e) -> v) sbinds in
+        StringMap.add name fields m
+      | _ -> m
+    in
+    List.fold_left add_field StringMap.empty utypes
+  in
+  (* Get idx of the field in the struct *)
+  let get_field_idx (name : string) (field : string) : int =
+    let fields = StringMap.find name struct_field_map in
+    let rec find_idx x lst c =
+      match lst with
+      | [] -> raise (Failure "Not Found in struct_field_map")
+      | hd :: tl -> if hd = x then c else find_idx x tl (c + 1)
+    in
+    find_idx field fields 0
+  in
   (* Create a map of vartype subtyp list *)
   let vtyp_list_map : A.typ list StringMap.t =
     List.fold_left
@@ -107,13 +142,13 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
     | _ -> raise (Failure (A.string_of_typ vt ^ " not a variant type"))
   in
   (* Return the LLVM type for any GoSci type *)
-  let ltype_of_typ = function
-    | A.Int -> i32_t
-    | A.Bool -> i1_t
-    | A.Float -> float_t
-    | A.Str -> string_t
-    | A.Char -> i8_t
-    | A.UserType name -> StringMap.find name vartype_map
+  (* First search in the native types, then the variant type and the struct type *)
+  let ltype_of_typ t =
+    match t with
+    | A.UserType name ->
+      (try StringMap.find name vartype_map with
+      | Not_found -> StringMap.find name struct_map)
+    | _ -> ltype_of_native_typ t
   in
   let printf_t : L.lltype = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let printf_func : L.llvalue = L.declare_function "printf" printf_t the_module in
@@ -171,9 +206,11 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
        Check local names first, then global names *)
     let lookup (local_vars : L.llvalue StringMap.t) (n : string) : L.llvalue =
       try StringMap.find n local_vars with
-      | Not_found -> StringMap.find n global_vars
+      | Not_found ->
+        (try StringMap.find n global_vars with
+        | Not_found -> raise (Failure "lookup Not_found"))
     in
-    (* Construct code for an expression; return its value *)
+    (* Construct code for an expre; return its value *)
     let rec build_expr local_vars builder (((typ, _), e) : sexpr) : L.llvalue =
       match e with
       | SIntLit i -> L.const_int i32_t i
@@ -182,6 +219,21 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       | SFloatLit f -> L.const_float float_t f
       | SCharLit l -> L.const_int i8_t (Char.code l)
       | SId s -> L.build_load (lookup local_vars s) s builder
+      | SStructLit (name, el) ->
+        let init_field (e : sexpr) : L.llvalue = build_expr local_vars builder e in
+        let struct_t = StringMap.find name struct_map in
+        let fields = Array.of_list (List.map init_field el) in
+        L.const_named_struct struct_t fields
+      | SFieldLit (v, f) ->
+        let bind = List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals) in
+        let name = match bind with 
+        |(UserType name, _, _, _) -> name 
+        |_ -> raise (Failure (v^"is not a struct"))
+        in
+        let idx = get_field_idx name f in
+        let addr = lookup local_vars v in
+        let p = L.build_struct_gep addr idx (v ^ f ^ "_ptr") builder in
+        L.build_load p v builder
       (* | SId s -> lookup local_vars s *)
       | SAssign (s, e) ->
         let (rt, _), _ = e in
@@ -196,20 +248,38 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           ignore (L.build_store e' (lookup local_vars s) builder);
           e'
         | UserType name ->
-          let tid = type_in_vartype rt (UserType name) in
-          let var = lookup local_vars s in
-          let ptr_tid = L.build_struct_gep var 0 (s ^ ".tid_ptr") builder in
-          ignore (L.build_store (L.const_int i32_t tid) ptr_tid builder);
-          let data_ptr = L.build_struct_gep var 1 (s ^ ".data_ptr") builder in
-          let data_ptr_cast =
-            L.build_bitcast
-              data_ptr
-              (L.pointer_type (ltype_of_typ rt))
-              (s ^ ".data_ptr_cast")
-              builder
-          in
-          ignore (L.build_store e' data_ptr_cast builder);
-          e')
+          (* Check if a struct type *)
+          if StringMap.mem name struct_map
+          then (
+            ignore (L.build_store e' (lookup local_vars s) builder);
+            e')
+          else (
+            let tid = type_in_vartype rt (UserType name) in
+            let var = lookup local_vars s in
+            let ptr_tid = L.build_struct_gep var 0 (s ^ ".tid_ptr") builder in
+            ignore (L.build_store (L.const_int i32_t tid) ptr_tid builder);
+            let data_ptr = L.build_struct_gep var 1 (s ^ ".data_ptr") builder in
+            let data_ptr_cast =
+              L.build_bitcast
+                data_ptr
+                (L.pointer_type (ltype_of_typ rt))
+                (s ^ ".data_ptr_cast")
+                builder
+            in
+            ignore (L.build_store e' data_ptr_cast builder);
+            e'))
+      | SAssignField (v, f, e) ->
+        let e' = build_expr local_vars builder e in
+        let bind = List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals) in
+        let name = match bind with 
+        |(UserType name, _, _, _) -> name 
+        |_ -> raise (Failure (v^"is not a struct"))
+        in
+        let idx = get_field_idx name f in
+         let addr = lookup local_vars v in
+        let f_addr = L.build_struct_gep addr idx (v ^ f ^ "_ptr") builder in
+        ignore (L.build_store e' f_addr builder);
+        e'
       | SBinop (e1, op, e2) ->
         let (t1, _), _ = e1
         and (t2, _), _ = e2
@@ -320,7 +390,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         in
         let result = f ^ "_result" in
         L.build_call fdef (Array.of_list llargs) result builder
-      | _ -> raise (Failure "Expression Not Implemented")
+      (* | _ -> raise (Failure "Expression Not Implemented") *)
     in
     (* LLVM insists each basic block end with exactly one "terminator"
        instruction that transfers control.  This function runs "instr builder"
