@@ -225,10 +225,13 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         let fields = Array.of_list (List.map init_field el) in
         L.const_named_struct struct_t fields
       | SFieldLit (v, f) ->
-        let bind = List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals) in
-        let name = match bind with 
-        |(UserType name, _, _, _) -> name 
-        |_ -> raise (Failure (v^"is not a struct"))
+        let bind =
+          List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals)
+        in
+        let name =
+          match bind with
+          | UserType name, _, _, _ -> name
+          | _ -> raise (Failure (v ^ "is not a struct"))
         in
         let idx = get_field_idx name f in
         let addr = lookup local_vars v in
@@ -270,13 +273,16 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
             e'))
       | SAssignField (v, f, e) ->
         let e' = build_expr local_vars builder e in
-        let bind = List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals) in
-        let name = match bind with 
-        |(UserType name, _, _, _) -> name 
-        |_ -> raise (Failure (v^"is not a struct"))
+        let bind =
+          List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals)
+        in
+        let name =
+          match bind with
+          | UserType name, _, _, _ -> name
+          | _ -> raise (Failure (v ^ "is not a struct"))
         in
         let idx = get_field_idx name f in
-         let addr = lookup local_vars v in
+        let addr = lookup local_vars v in
         let f_addr = L.build_struct_gep addr idx (v ^ f ^ "_ptr") builder in
         ignore (L.build_store e' f_addr builder);
         e'

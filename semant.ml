@@ -49,6 +49,7 @@ let check ((globals, units, utypes, functions) : program) =
     | UserType type_name -> StringMap.mem type_name global_vartypes
     | _ -> false
   in
+  (* whether typ t is contained in vartype vt *)
   let has_subtype vt t =
     let typ_list = StringMap.find (string_of_typ vt) global_vartypes in
     List.mem t typ_list
@@ -107,18 +108,6 @@ let check ((globals, units, utypes, functions) : program) =
     match b with
     | t, _, _, _ -> t
   in
-  let unit_of_identifier s m =
-    try snd (StringMap.find s m) with
-    | Not_found -> raise (Failure ("undeclared identifier " ^ s))
-  in
-  let check_unit_expr (uexpr : unit_expr) =
-    let f checked (u, exp) =
-      if StringMap.mem u global_units
-      then (u, exp) :: checked
-      else raise (Failure ("unit " ^ u ^ " not defined"))
-    in
-    List.rev (List.fold_left f [] uexpr)
-  in
   let unit_of_var_field var f var_m struct_m =
     let s = struct_of_var var var_m in
     let b = bind_of_struct_field s f struct_m in
@@ -134,6 +123,20 @@ let check ((globals, units, utypes, functions) : program) =
     then lvaluet
     else raise (Failure err)
   in
+  let unit_of_identifier s m =
+    try snd (StringMap.find s m) with
+    | Not_found -> raise (Failure ("undeclared identifier " ^ s))
+  in
+  (* check if unit defined *)
+  let check_unit_expr (uexpr : unit_expr) =
+    let f checked (u, exp) =
+      if StringMap.mem u global_units
+      then (u, exp) :: checked
+      else raise (Failure ("unit " ^ u ^ " not defined"))
+    in
+    List.rev (List.fold_left f [] uexpr)
+  in
+  (* Check if the given rvalue unit expr can be assigned to the given lvalue unit expr *)
   let check_unit_assign lu ru err =
     (* if lvaluet = rvaluet then lvaluet else raise (Failure err) *)
     if lu = ru || ru = []
@@ -143,9 +146,10 @@ let check ((globals, units, utypes, functions) : program) =
         (Failure
            ("Incompatible unit: "
            ^ string_of_unit_expr lu
-           ^ " and "
+           ^ " <- "
            ^ string_of_unit_expr ru))
   in
+  (* try to convert the rhs unit to the lhs unit *)
   let unit_convert u1 u2 =
     if u1 = u2
     then One
@@ -156,9 +160,11 @@ let check ((globals, units, utypes, functions) : program) =
       | BaseUnit, CUnit (e, id) when u1 = id -> MulE e
       | CUnit (e, id), BaseUnit when u2 = id -> DivE e
       | CUnit (e1, id1), CUnit (e2, id2) when id1 = id2 -> MulE (Binop (e2, Div, e1))
-      | _ -> raise (Failure ("cannot convert " ^ u2 ^ " to " ^ u1)))
+      | _ -> raise (Failure ("cannot convert unit " ^ u2 ^ " to " ^ u1)))
   in
+  (* try to convert the rhs unit term to the lhs unit term *)
   let unit_term_convert (u1, i1) (u2, i2) =
+    (* power must equal *)
     if i1 = i2
     then (
       match unit_convert u1 u2, i1 with
@@ -168,7 +174,7 @@ let check ((globals, units, utypes, functions) : program) =
     else
       raise
         (Failure
-           ("cannot convert "
+           ("cannot convert unit term "
            ^ string_of_unit_term (u1, i1)
            ^ " to "
            ^ string_of_unit_term (u2, i2)))
@@ -180,12 +186,25 @@ let check ((globals, units, utypes, functions) : program) =
     | _ when n < 1 -> item :: repeat item (n + 1)
     | _ -> raise (Failure "n must be non-zero")
   in
-  let rec flatten_unit_expr = function
+  (* split unit expr into power 1 term and sort them by their base unit to facilitate later convert *)
+  let rec flatten_unit_expr (ue : unit_expr) =
+    let to_key (u : string) : string =
+      let base = StringMap.find u global_units in
+      match base with
+      | BaseUnit -> u
+      | CUnit (_, b) -> b
+      | _ -> raise (Failure "Abstract unit is not supported")
+    in
+    let ue_sorted =
+      List.sort (fun ut1 ut2 -> compare (to_key (fst ut1)) (to_key (fst ut2))) ue
+    in
+    match ue_sorted with
     | [] -> []
     | hd :: tl -> repeat (fst hd, 1) (snd hd) @ flatten_unit_expr tl
   in
+  (* try to convert the rhs unit expr to the lhs unit expr *)
   let unit_expr_convert ue1 ue2 =
-    if ue1 = ue2 || ue2 = []
+    if ue1 = ue2 || ue2 = [] || ue1 = []
     then []
     else (
       let ue1' = flatten_unit_expr ue1 in
@@ -194,7 +213,7 @@ let check ((globals, units, utypes, functions) : program) =
       then
         raise
           (Failure
-             ("cannot convert "
+             ("cannot convert unit expr "
              ^ string_of_unit_expr ue1
              ^ " to "
              ^ string_of_unit_expr ue2))
@@ -205,6 +224,7 @@ let check ((globals, units, utypes, functions) : program) =
         in
         List.rev (List.fold_left2 f [] ue1' ue2')))
   in
+  (* try to update the expr so that its unit expr is changed from rhs to lhs *)
   let convert_expr_by_unit expr ue1 ue2 =
     let f expr convE =
       match convE with
@@ -214,6 +234,7 @@ let check ((globals, units, utypes, functions) : program) =
     in
     List.fold_left f expr (unit_expr_convert ue1 ue2)
   in
+  (* combine adjacent unit term if same unit *)
   let unit_simplify u =
     let update m item =
       let old =
@@ -291,6 +312,8 @@ let check ((globals, units, utypes, functions) : program) =
       else (
         let check_structlit (ft, _, fu, _) e =
           let (et, eu), e' = check_expr symbols e in
+          let _, e' = check_expr symbols (convert_expr_by_unit e fu eu) in
+          let eu = fu in
           let err =
             "illegal field assignment "
             ^ string_of_typ et
@@ -333,6 +356,8 @@ let check ((globals, units, utypes, functions) : program) =
       let lt = type_of_var_field var f symbols global_structs
       and lu = unit_of_var_field var f symbols global_structs
       and (rt, ru), e' = check_expr symbols e in
+      let _, e' = check_expr symbols (convert_expr_by_unit e lu ru) in
+      let ru = lu in
       let err =
         "illegal assignment "
         ^ string_of_typ lt
@@ -463,6 +488,8 @@ let check ((globals, units, utypes, functions) : program) =
       else (
         let check_call (ft, _, fu, _) e =
           let (et, eu), e' = check_expr symbols e in
+          let _, e' = check_expr symbols (convert_expr_by_unit e fu eu) in
+          let eu = fu in
           let err =
             "illegal argument found "
             ^ string_of_typ et
