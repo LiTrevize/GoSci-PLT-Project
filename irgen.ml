@@ -267,7 +267,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
             | _ -> false
           in
           (* Check if a struct type or a vartype copy *)
-          if StringMap.mem s struct_map || is_usertype rt
+          if StringMap.mem name struct_map || is_usertype rt
           then (
             ignore (L.build_store e' (lookup local_vars s) builder);
             e' (* assign a subtype to a vartype *))
