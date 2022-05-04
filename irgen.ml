@@ -226,9 +226,10 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       | SFloatLit f -> L.const_float float_t f
       | SCharLit l -> L.const_int i8_t (Char.code l)
       | SId s ->
-        if Hashtbl.mem vartype_vars s
+        (* if Hashtbl.mem vartype_vars s
         then lookup local_vars s
-        else L.build_load (lookup local_vars s) s builder
+        else  *)
+        L.build_load (lookup local_vars s) s builder
       | SStructLit (name, el) ->
         let init_field (e : sexpr) : L.llvalue = build_expr local_vars builder e in
         let struct_t = StringMap.find name struct_map in
@@ -261,11 +262,15 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           ignore (L.build_store e' (lookup local_vars s) builder);
           e'
         | UserType name ->
-          (* Check if a struct type *)
-          if StringMap.mem name struct_map
+          let is_usertype = function
+            | A.UserType _ -> true
+            | _ -> false
+          in
+          (* Check if a struct type or a vartype copy *)
+          if StringMap.mem s struct_map || is_usertype rt
           then (
             ignore (L.build_store e' (lookup local_vars s) builder);
-            e')
+            e' (* assign a subtype to a vartype *))
           else (
             let tid = type_in_vartype rt (UserType name) in
             let var = lookup local_vars s in
@@ -463,17 +468,17 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         | _ -> raise (Failure "For type Not implemented"))
       | SMatchS (_, s, e, case_list) ->
         let (vt, _), e' = e in
-        (* let vtn, vval =
+        let vtn, vval =
           match e' with
           | SId name -> name, lookup local_vars name
           | _ -> raise (Failure "Only vartype variable can be matched")
-        in *)
-        let vtn =
+        in
+        (* let vtn =
           match vt with
           | UserType vtn -> vtn
           | _ -> raise (Failure "only vartype variable can be matched")
         in
-        let vval = build_expr local_vars builder e in
+        let vval = build_expr local_vars builder e in *)
         let end_bb = L.append_block context "match_end" the_function in
         (* partial function *)
         let build_br_end = L.build_br end_bb in
