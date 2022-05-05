@@ -252,7 +252,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       | SAssign (s, e) ->
         let (rt, _), _ = e in
         let lt, _, _, _ =
-          List.find (fun (t, n, u, e) -> n = s) (fdecl.slocals @ fdecl.sformals)
+          List.find (fun (t, n, u, e) -> n = s) (sglobals @ fdecl.slocals @ fdecl.sformals)
         in
         (* e' computes the e.addr *)
         let e' = build_expr local_vars builder e in
@@ -528,6 +528,18 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         List.fold_left build_case builder case_list
       | _ -> raise (Failure "Statement Not Implemented")
     in
+    (* Build code for global variable init *)
+    let build_var_init builder (t, n, u, e_opt) =
+      match e_opt with
+      | Some e ->
+        let e_assign = fst e, SAssign (n, e) in
+        ignore (build_expr local_vars builder e_assign);
+        builder
+      | None -> builder
+    in
+    let builder = List.fold_left build_var_init builder sglobals in
+    (* Build code for local variable init *)
+    let builder = List.fold_left build_var_init builder fdecl.slocals in
     (* Build the code for each statement in the function *)
     let func_builder = build_stmt local_vars builder (SBlock fdecl.sbody) in
     (* Add a return if the last block falls off the end *)
