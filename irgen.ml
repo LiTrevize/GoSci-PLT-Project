@@ -40,24 +40,126 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
   let i32_t = L.i32_type context
   and i8_t = L.i8_type context
   and i1_t = L.i1_type context
+  and i_t n = L.integer_type context n
   and float_t = L.double_type context
   and string_t = L.pointer_type (L.i8_type context) in
-  (* Return the LLVM type for a MicroC type *)
-  let ltype_of_typ = function
+  (* Create a map of global variables after creating each *)
+  let global_vars : L.llvalue StringMap.t =
+    let global_var m (t, n, u, _) =
+      let init = function
+        | A.Int -> L.const_int i32_t 0
+        | A.Char -> L.const_int i8_t 0
+        | A.Bool -> L.const_int i1_t 0
+        | A.Float -> L.const_float float_t 0.0
+        | A.Str -> L.const_stringz context ""
+        | _ -> raise (Failure (A.string_of_typ t ^ " not supported as global variable"))
+      in
+      StringMap.add n (L.define_global n (init t) the_module) m
+    in
+    List.fold_left global_var StringMap.empty sglobals
+  in
+  (* Return the LLVM type for any GoSci type *)
+  let ltype_of_native_typ = function
     | A.Int -> i32_t
     | A.Bool -> i1_t
     | A.Float -> float_t
     | A.Str -> string_t
     | A.Char -> i8_t
-    | _ -> raise (Failure "Type Not Implemented")
+    | _ as t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " is not a supported type"))
   in
-  (* Create a map of global variables after creating each *)
-  let global_vars : L.llvalue StringMap.t =
-    let global_var m (t, n, u, _) =
-      let init = L.const_int (ltype_of_typ t) 0 in
-      StringMap.add n (L.define_global n init the_module) m
+  let size_of_native_typ = function
+    | A.Int -> 32
+    | A.Bool -> 1
+    | A.Float -> 64
+    | A.Char -> 8
+    | _ as t -> raise (Failure ("Cannot get size of type " ^ A.string_of_typ t))
+  in
+  (* Create a map of variant type *)
+  let vartype_map : L.lltype StringMap.t =
+    let add_vartype m = function
+      | SVarType (name, typ_list) ->
+        (* let ltype_list = List.map ltype_of_native_typ typ_list in *)
+        let max_size =
+          List.fold_left
+            (fun prev typ ->
+              let curr = size_of_native_typ typ in
+              if prev < curr then curr else prev)
+            0
+            typ_list
+        in
+        let struct_t = L.named_struct_type context name in
+        L.struct_set_body struct_t [| i32_t; i_t max_size |] false;
+        StringMap.add name struct_t m
+      | _ -> m
     in
-    List.fold_left global_var StringMap.empty sglobals
+    List.fold_left add_vartype StringMap.empty utypes
+  in
+  (* Build a map from a struct name to its llvm type *)
+  let struct_map : L.lltype StringMap.t =
+    let add_struct m = function
+      | SStructType (name, sbinds) ->
+        let struct_t = L.named_struct_type context name in
+        let struct_body =
+          Array.of_list
+            (List.map (fun (t, v) -> ltype_of_native_typ t) (unitless_bind_list sbinds))
+        in
+        L.struct_set_body struct_t struct_body false;
+        StringMap.add name struct_t m
+      | _ -> m
+    in
+    List.fold_left add_struct StringMap.empty utypes
+  in
+  (* Build a map from struct name to its field names *)
+  let struct_field_map : string list StringMap.t =
+    let add_field m = function
+      | SStructType (name, sbinds) ->
+        let fields = List.map (fun (t, v, u, e) -> v) sbinds in
+        StringMap.add name fields m
+      | _ -> m
+    in
+    List.fold_left add_field StringMap.empty utypes
+  in
+  (* Get idx of the field in the struct *)
+  let get_field_idx (name : string) (field : string) : int =
+    let fields = StringMap.find name struct_field_map in
+    let rec find_idx x lst c =
+      match lst with
+      | [] -> raise (Failure "Not Found in struct_field_map")
+      | hd :: tl -> if hd = x then c else find_idx x tl (c + 1)
+    in
+    find_idx field fields 0
+  in
+  (* Create a map of vartype subtyp list *)
+  let vtyp_list_map : A.typ list StringMap.t =
+    List.fold_left
+      (fun m utyp ->
+        match utyp with
+        | SVarType (name, typ_list) -> StringMap.add name typ_list m
+        | _ -> m)
+      StringMap.empty
+      utypes
+  in
+  let type_in_vartype (typ : A.typ) (vt : A.typ) : int =
+    match vt with
+    | UserType vtn ->
+      let typ_list = StringMap.find vtn vtyp_list_map in
+      let idx, _ =
+        List.fold_left
+          (fun (tarid, curid) t -> if typ = t then curid, curid + 1 else tarid, curid + 1)
+          (0, 1)
+          typ_list
+      in
+      idx
+    | _ -> raise (Failure (A.string_of_typ vt ^ " not a variant type"))
+  in
+  (* Return the LLVM type for any GoSci type *)
+  (* First search in the native types, then the variant type and the struct type *)
+  let ltype_of_typ t =
+    match t with
+    | A.UserType name ->
+      (try StringMap.find name vartype_map with
+      | Not_found -> StringMap.find name struct_map)
+    | _ -> ltype_of_native_typ t
   in
   let printf_t : L.lltype = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let printf_func : L.llvalue = L.declare_function "printf" printf_t the_module in
@@ -83,15 +185,19 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
   let build_function_body fdecl =
     let the_function, _ = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
-    let float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
-    let char_format_str = L.build_global_stringptr "%c\n" "fmt" builder in
-    let str_format_str = L.build_global_stringptr "%s\n" "fmt" builder in
+    let int_format_str = L.build_global_stringptr "%d\n" "fmt_int" builder in
+    let float_format_str = L.build_global_stringptr "%g\n" "fmt_float" builder in
+    let char_format_str = L.build_global_stringptr "%c\n" "fmt_char" builder in
+    let str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
     (* Construct the function's "locals": formal arguments and locally
        declared variables.  Allocate each on the stack, initialize their
        value, if appropriate, and remember their values in the "locals" map *)
-    let local_vars =
+    let vartype_vars : (string, unit) Hashtbl.t = Hashtbl.create 10 in
+    let local_vars : L.llvalue StringMap.t =
       let add_formal m (t, n) p =
+        (match t with
+        | A.UserType _ -> Hashtbl.add vartype_vars n ()
+        | _ -> ());
         L.set_value_name n p;
         let local = L.build_alloca (ltype_of_typ t) n builder in
         ignore (L.build_store p local builder);
@@ -99,6 +205,9 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       (* Allocate space for any locally declared variables and add the
        * resulting registers to our map *)
       and add_local m (t, n) =
+        (match t with
+        | A.UserType _ -> Hashtbl.add vartype_vars n ()
+        | _ -> ());
         let local_var = L.build_alloca (ltype_of_typ t) n builder in
         StringMap.add n local_var m
       in
@@ -113,30 +222,101 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
     in
     (* Return the value for a variable or formal argument.
        Check local names first, then global names *)
-    let lookup n =
+    let lookup (local_vars : L.llvalue StringMap.t) (n : string) : L.llvalue =
       try StringMap.find n local_vars with
-      | Not_found -> StringMap.find n global_vars
+      | Not_found ->
+        (try StringMap.find n global_vars with
+        | Not_found -> raise (Failure "lookup Not_found"))
     in
-    (* Construct code for an expression; return its value *)
-    let rec build_expr builder (((typ, _), e) : sexpr) : L.llvalue =
+    (* Construct code for an expre; return its value *)
+    let rec build_expr local_vars builder (((typ, _), e) : sexpr) : L.llvalue =
       match e with
       | SIntLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SStrLit s -> L.build_global_stringptr s "tmp_str" builder
       | SFloatLit f -> L.const_float float_t f
       | SCharLit l -> L.const_int i8_t (Char.code l)
-      | SId s -> L.build_load (lookup s) s builder
+      | SId s ->
+        (* if Hashtbl.mem vartype_vars s
+        then lookup local_vars s
+        else  *)
+        L.build_load (lookup local_vars s) s builder
+      | SStructLit (name, el) ->
+        let init_field (e : sexpr) : L.llvalue = build_expr local_vars builder e in
+        let struct_t = StringMap.find name struct_map in
+        let fields = Array.of_list (List.map init_field el) in
+        L.const_named_struct struct_t fields
+      | SFieldLit (v, f) ->
+        let bind =
+          List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals)
+        in
+        let name =
+          match bind with
+          | UserType name, _, _, _ -> name
+          | _ -> raise (Failure (v ^ "is not a struct"))
+        in
+        let idx = get_field_idx name f in
+        let addr = lookup local_vars v in
+        let p = L.build_struct_gep addr idx (v ^ f ^ "_ptr") builder in
+        L.build_load p v builder
+      (* | SId s -> lookup local_vars s *)
       | SAssign (s, e) ->
-        let e' = build_expr builder e in
+        let (rt, _), _ = e in
+        let lt, _, _, _ =
+          List.find (fun (t, n, u, e) -> n = s) (sglobals @ fdecl.slocals @ fdecl.sformals)
+        in
         (* e' computes the e.addr *)
-        ignore (L.build_store e' (lookup s) builder);
-        (* store e' to the address of s *)
+        let e' = build_expr local_vars builder e in
+        (match lt with
+        | Int | Float | Bool | Char | Str ->
+          (* store e' to the address of s *)
+          ignore (L.build_store e' (lookup local_vars s) builder);
+          e'
+        | UserType name ->
+          let is_usertype = function
+            | A.UserType _ -> true
+            | _ -> false
+          in
+          (* Check if a struct type or a vartype copy *)
+          if StringMap.mem name struct_map || is_usertype rt
+          then (
+            ignore (L.build_store e' (lookup local_vars s) builder);
+            e' (* assign a subtype to a vartype *))
+          else (
+            let tid = type_in_vartype rt (UserType name) in
+            let var = lookup local_vars s in
+            let ptr_tid = L.build_struct_gep var 0 (s ^ ".tid_ptr") builder in
+            ignore (L.build_store (L.const_int i32_t tid) ptr_tid builder);
+            let data_ptr = L.build_struct_gep var 1 (s ^ ".data_ptr") builder in
+            let data_ptr_cast =
+              L.build_bitcast
+                data_ptr
+                (L.pointer_type (ltype_of_typ rt))
+                (s ^ ".data_ptr_cast")
+                builder
+            in
+            ignore (L.build_store e' data_ptr_cast builder);
+            e'))
+      | SAssignField (v, f, e) ->
+        let e' = build_expr local_vars builder e in
+        let bind =
+          List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals)
+        in
+        let name =
+          match bind with
+          | UserType name, _, _, _ -> name
+          | _ -> raise (Failure (v ^ "is not a struct"))
+        in
+        let idx = get_field_idx name f in
+        let addr = lookup local_vars v in
+        let f_addr = L.build_struct_gep addr idx (v ^ f ^ "_ptr") builder in
+        ignore (L.build_store e' f_addr builder);
         e'
       | SBinop (e1, op, e2) ->
         let (t1, _), _ = e1
         and (t2, _), _ = e2
-        and e1' = build_expr builder e1
-        and e2' = build_expr builder e2 in
+        and e1' = build_expr local_vars builder e1
+        and e2' = build_expr local_vars builder e2 in
         if t1 = A.Int && t2 = A.Int
         then (
           match op with
@@ -201,7 +381,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           print_endline (A.string_of_typ t2);
           raise (Failure "Binary Expression Not Implemented"))
       | SUnaop (op, (((t, _), _) as e)) ->
-        let v = build_expr builder e in
+        let v = build_expr local_vars builder e in
         (match op with
         | A.Neg when t = A.Int -> L.build_neg
         | A.Neg when t = A.Float -> L.build_fneg
@@ -212,8 +392,8 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           builder
       | SIodop (e1, op) ->
         let (t, _), _ = e1
-        and e1' = build_expr builder e1
-        and one = build_expr builder ((Int, []), SIntLit 1) in
+        and e1' = build_expr local_vars builder e1
+        and one = build_expr local_vars builder ((Int, []), SIntLit 1) in
         (match op with
         | A.Inc when t = A.Int -> L.build_add e1' one "tmp" builder
         | A.Dec when t = A.Int -> L.build_sub e1' one "tmp" builder
@@ -231,16 +411,18 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
                  (Failure
                     ("print() cannot take argument of type "
                     ^ A.string_of_typ (fst (fst e)))))
-           ; build_expr builder e
+           ; build_expr local_vars builder e
           |]
           "printf"
           builder
       | SCall (f, args) ->
         let fdef, fdecl = StringMap.find f function_decls in
-        let llargs = List.rev (List.map (build_expr builder) (List.rev args)) in
+        let llargs =
+          List.rev (List.map (build_expr local_vars builder) (List.rev args))
+        in
         let result = f ^ "_result" in
         L.build_call fdef (Array.of_list llargs) result builder
-      | _ -> raise (Failure "Expression Not Implemented")
+      (* | _ -> raise (Failure "Expression Not Implemented") *)
     in
     (* LLVM insists each basic block end with exactly one "terminator"
        instruction that transfers control.  This function runs "instr builder"
@@ -254,28 +436,28 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
     (* Build the code for the given statement; return the builder for
        the statement's successor (i.e., the next instruction will be built
        after the one generated by this call) *)
-    let rec build_stmt target builder = function
-      | SBlock sl -> List.fold_left (build_stmt target) builder sl
+    let rec build_stmt local_vars target builder = function
+      | SBlock sl -> List.fold_left (build_stmt local_vars target) builder sl
       | SExprS e ->
-        ignore (build_expr builder e);
+        ignore (build_expr local_vars builder e);
         builder
       | SLabelS _ -> raise (Failure ("Label statement is not implemented"))
       | SReturnS es ->
         (* Fix: each funciton has exactly one return value *)
-        ignore (L.build_ret (build_expr builder (List.hd es)) builder);
+        ignore (L.build_ret (build_expr local_vars builder (List.hd es)) builder);
         builder
       | SIfS (opt, predicate, then_stmt, else_stmt_opt) ->
         (match opt with
         | None -> ()
-        | Some exp -> ignore (build_expr builder exp)
+        | Some exp -> ignore (build_expr local_vars builder exp)
         );
-        let bool_val = build_expr builder predicate in
+        let bool_val = build_expr local_vars builder predicate in
         let then_bb = L.append_block context "then" the_function in
-        ignore (build_stmt target (L.builder_at_end context then_bb) then_stmt);
+        ignore (build_stmt local_vars target (L.builder_at_end context then_bb) then_stmt);
         let else_bb = L.append_block context "else" the_function in
         (match else_stmt_opt with
         | Some else_stmt ->
-          ignore (build_stmt target (L.builder_at_end context else_bb) else_stmt)
+          ignore (build_stmt local_vars target (L.builder_at_end context else_bb) else_stmt)
         | None -> ());
         let end_bb = L.append_block context "if_end" the_function in
         let build_br_end = L.build_br end_bb in
@@ -327,20 +509,20 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           (* partial function *)
           ignore (build_br_cond builder);
           let cond_builder = L.builder_at_end context cond_bb in
-          let bool_val = build_expr cond_builder predicate in
+          let bool_val = build_expr local_vars cond_builder predicate in
           let loop_bb = L.append_block context "for_loop" the_function in
           let end_bb = L.append_block context "for_end" the_function in
           let for_target = { 
             break_target=Some end_bb; 
             continue_target=Some cond_bb; 
             fall_target=target.fall_target;} in
-          add_terminal (build_stmt for_target (L.builder_at_end context loop_bb) body) build_br_cond;
+          add_terminal (build_stmt local_vars for_target (L.builder_at_end context loop_bb) body) build_br_cond;
           ignore (L.build_cond_br bool_val loop_bb end_bb cond_builder);
           L.builder_at_end context end_bb
         | SFClause (init_stmt, cond_expr, update_expr) ->
           (match init_stmt with
           | None -> ()
-          | Some stmt -> ignore (build_stmt target builder stmt));
+          | Some stmt -> ignore (build_stmt local_vars target builder stmt));
           let cond_bb = L.append_block context "for_cond" the_function in
           let build_br_cond = L.build_br cond_bb in
           ignore (build_br_cond builder);
@@ -355,13 +537,13 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           (match cond_expr with
           | None -> ignore (L.build_br loop_bb cond_builder)
           | Some expr -> 
-            let bool_val = build_expr cond_builder expr in
+            let bool_val = build_expr local_vars cond_builder expr in
             ignore (L.build_cond_br bool_val loop_bb end_bb cond_builder));
-          add_terminal (build_stmt for_target (L.builder_at_end context loop_bb) body) (L.build_br update_bb);
+          add_terminal (build_stmt local_vars for_target (L.builder_at_end context loop_bb) body) (L.build_br update_bb);
           let update_builder =  L.builder_at_end context update_bb in
           (match update_expr with
           | None -> ()
-          | Some expr -> ignore (build_expr update_builder expr));
+          | Some expr -> ignore (build_expr local_vars update_builder expr));
           ignore (build_br_cond update_builder);
           L.builder_at_end context end_bb
         | _ -> raise (Failure "Range-for clause Not implemented"))
@@ -392,12 +574,12 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       | SSwitchS (opt, expr, casel) -> 
         (match opt with
         | None -> ()
-        | Some exp -> ignore (build_expr builder exp)
+        | Some exp -> ignore (build_expr local_vars builder exp)
         );
         let case_value = 
           (match expr with
           | None -> L.const_int i1_t 1
-          | Some exp -> build_expr builder exp
+          | Some exp -> build_expr local_vars builder exp
           ); in 
         let default_bb = L.append_block context "default" the_function in
         let end_bb = L.append_block context "switch_end" the_function in
@@ -416,18 +598,18 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
             (match el with 
             | [] -> 
               (*default case*)
-              ignore (List.map (fun stmt -> build_stmt switch_target (L.builder_at_end context default_bb) stmt) sl);
+              ignore (List.map (fun stmt -> build_stmt local_vars switch_target (L.builder_at_end context default_bb) stmt) sl);
               add_terminal (L.builder_at_end context default_bb) (L.build_br end_bb);
               dests
             | _ -> 
               (*case expr1, expr2... : 
                  stmt list*)
               let case_bb = L.append_block context "case" the_function in
-              ignore (List.map (fun stmt -> build_stmt switch_target (L.builder_at_end context case_bb) stmt) sl);
+              ignore (List.map (fun stmt -> build_stmt local_vars switch_target (L.builder_at_end context case_bb) stmt) sl);
               add_terminal (L.builder_at_end context case_bb) (L.build_br end_bb);
               (*matchingn any expr in this case will jump to its block*)
               let case_pairs = List.map (fun cexpr -> 
-                let cval = build_expr builder cexpr in 
+                let cval = build_expr local_vars builder cexpr in 
                   (cval, case_bb)) el in
               case_pairs @ dests)) 
           [] (List.rev casel) in
@@ -440,7 +622,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
     (* Default break/continue/fallthrough target *)
     let default_target = {break_target=None; continue_target=None; fall_target=None;} in
     (* Build the code for each statement in the function *)
-    let func_builder = build_stmt default_target builder (SBlock fdecl.sbody) in
+    let func_builder = build_stmt local_vars default_target builder (SBlock fdecl.sbody) in
     (* Add a return if the last block falls off the end *)
     add_terminal func_builder (L.build_ret (L.const_int i32_t 0))
   in
