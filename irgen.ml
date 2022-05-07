@@ -594,26 +594,36 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         let default_bb = L.append_block context "default" the_function in
         let end_bb = L.append_block context "switch_end" the_function in
         (* construct the jump table *)
-        let all_cases = List.fold_left (fun dests clause -> 
-          match clause with
-          | SCaseS (el, sl) ->
-            let switch_target = { 
-            break_target = Some end_bb; 
-            continue_target = target.continue_target; 
-            fall_target = 
-            if List.length dests == 0 
-              then Some end_bb
-              (*get the next block*)
-              else Some (snd (List.hd dests));} in 
-            (match el with 
-            | [] -> 
-              (*default case*)
-              ignore (List.map (fun stmt -> build_stmt local_vars switch_target (L.builder_at_end context default_bb) stmt) sl);
-              add_terminal (L.builder_at_end context default_bb) (L.build_br end_bb);
-              dests
-            | _ -> 
-              (*case expr1, expr2... : stmt list*)
-                 
+        let all_cases =
+          List.fold_left
+            (fun dests clause ->
+              match clause with
+              | SCaseS (el, sl) ->
+                let switch_target =
+                  { break_target = Some end_bb
+                  ; continue_target = target.continue_target
+                  ; fall_target =
+                      (if List.length dests == 0
+                      then Some end_bb (*get the next block*)
+                      else Some (snd (List.hd dests)))
+                  }
+                in
+                (match el with
+                | [] ->
+                  (*default case*)
+                  ignore
+                    (List.map
+                       (fun stmt ->
+                         build_stmt
+                           local_vars
+                           switch_target
+                           (L.builder_at_end context default_bb)
+                           stmt)
+                       sl);
+                  add_terminal (L.builder_at_end context default_bb) (L.build_br end_bb);
+                  dests
+                | _ ->
+                  (*case expr1, expr2... : stmt list*)
                   let case_bb = L.append_block context "case" the_function in
                   ignore
                     (List.map
