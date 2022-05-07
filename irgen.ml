@@ -567,9 +567,6 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         case ...:
           ...
       }
-      Gen =>
-        
-
          *)
       | SSwitchS (opt, expr, casel) -> 
         (match opt with
@@ -592,7 +589,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
             continue_target = target.continue_target; 
             fall_target = 
             if List.length dests == 0 
-              then Some default_bb 
+              then Some end_bb
               (*get the next block*)
               else Some (snd (List.hd dests));} in 
             (match el with 
@@ -617,7 +614,67 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         let sw = L.build_switch case_value default_bb (List.length all_cases) builder in
         ignore(List.map (fun dest -> L.add_case sw (fst dest) (snd dest)) all_cases);
         L.builder_at_end context end_bb
-      | _ -> raise (Failure "Statement Not Implemented")
+      | SMatchS (_, s, e, case_list) ->
+        let (vt, _), e' = e in
+        let vtn, vval =
+          match e' with
+          | SId name -> name, lookup local_vars name
+          | _ -> raise (Failure "Only vartype variable can be matched")
+        in
+        (* let vtn =
+          match vt with
+          | UserType vtn -> vtn
+          | _ -> raise (Failure "only vartype variable can be matched")
+        in
+        let vval = build_expr local_vars builder e in *)
+        let end_bb = L.append_block context "match_end" the_function in
+        (* partial function *)
+        let build_br_end = L.build_br end_bb in
+        let build_case builder case =
+          match case with
+          | SMatchC (Some case_t, sl) ->
+            (* build case condition *)
+            let ptr_tid = L.build_struct_gep vval 0 (vtn ^ ".tid_ptr") builder in
+            let val_tid = L.build_load ptr_tid (vtn ^ ".tid") builder in
+            let tid = type_in_vartype case_t vt in
+            let bool_val =
+              L.build_icmp L.Icmp.Eq val_tid (L.const_int i32_t tid) "match_cmp" builder
+            in
+            (* add varaible *)
+            let local = L.build_alloca (ltype_of_typ case_t) s builder in
+            let data_ptr = L.build_struct_gep vval 1 (vtn ^ ".data_ptr") builder in
+            let data_ptr_cast =
+              L.build_bitcast
+                data_ptr
+                (L.pointer_type (ltype_of_typ case_t))
+                (vtn ^ ".data_ptr_cast")
+                builder
+            in
+            let data_val = L.build_load data_ptr_cast (vtn ^ ".data_val") builder in
+            ignore (L.build_store data_val local builder);
+            let local_vars = StringMap.add s local local_vars in
+            (* build case body block *)
+            let case_bb = L.append_block context "match_case_body" the_function in
+            (* build stmt list *)
+            ignore
+              (List.fold_left
+                 (build_stmt local_vars target)
+                 (L.builder_at_end context case_bb)
+                 sl);
+            add_terminal (L.builder_at_end context case_bb) build_br_end;
+            let next_case_bb = L.append_block context "match_case_cond" the_function in
+            ignore (L.build_cond_br bool_val case_bb next_case_bb builder);
+            L.builder_at_end context next_case_bb
+          | SMatchC (None, sl) ->
+            (* build stmt list
+               reuse next_case_bb from last case
+            *)
+            ignore (List.fold_left (build_stmt local_vars target) builder sl);
+            add_terminal builder build_br_end;
+            L.builder_at_end context end_bb
+        in
+        List.fold_left build_case builder case_list
+      (* | _ -> raise (Failure "Statement Not Implemented") *)
     in
     (* Default break/continue/fallthrough target *)
     let default_target = {break_target=None; continue_target=None; fall_target=None;} in
