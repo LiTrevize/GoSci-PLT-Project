@@ -379,26 +379,32 @@ let check ((globals, units, utypes, functions) : program) =
         | SIntLit l -> l
         | _ -> raise (Failure (string_of_sexpr se2 ^ " is not int literal"))
       in
+      let err_msg =
+        "illegal type in binary operator "
+        ^ string_of_typ t1
+        ^ " "
+        ^ string_of_bop bop
+        ^ " "
+        ^ string_of_typ t2
+      in
       let check_type_bop t1 t2 bop =
         match bop with
         | (Add | Sub | Mul) when t1 = t2 && t1 = Int -> Int
         | (Add | Sub | Mul) when t1 = t2 && t1 = Float -> Float
-        | Pow when t1 = Int && t2 = Int && check_intlit e2' >= 0 -> Int
-        | Pow when t1 = Float && t2 = Int && check_intlit e2' >= 0 -> Float
+        | Pow when t1 = Int && t2 = Int ->
+          if check_intlit e2' > 0
+          then Int
+          else raise (Failure (err_msg ^ " (exponent in power op must be positive"))
+        | Pow when t1 = Float && t2 = Int ->
+          if check_intlit e2' > 0
+          then Float
+          else raise (Failure (err_msg ^ " (exponent in power op must be positive"))
         | (Div | Mod) when t1 = t2 && t1 = Int -> Int
         | Div when t1 = t2 && t1 = Float -> Float
         | Equal | Neq -> Bool
         | (Geq | Leq | Great | Less) when t1 = Int || t1 = Float -> Bool
         | (And | Or) when t1 = Bool -> Bool
-        | _ ->
-          raise
-            (Failure
-               ("illegal type in binary operator "
-               ^ string_of_typ t1
-               ^ " "
-               ^ string_of_bop bop
-               ^ " "
-               ^ string_of_typ t2))
+        | _ -> raise (Failure err_msg)
       in
       (* Determine expression type based on operator and operand units *)
       let check_unit_bop u1 u2 bop =
