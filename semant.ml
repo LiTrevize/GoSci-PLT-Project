@@ -615,10 +615,15 @@ let check ((globals, units, utypes, functions) : program) =
         let s_ctrl =
           { can_break = true; can_continue = ctrl.can_continue; can_fall = true }
         in
-        let default_count = List.fold_left (fun count case -> 
-          match case with 
-          | CaseS (el, sl) -> if List.length el == 0 then count + 1 else count) 0 casel in 
-        if default_count > 1 then raise (Failure ("Multiple default labels."));
+        let default_count =
+          List.fold_left
+            (fun count case ->
+              match case with
+              | CaseS (el, sl) -> if List.length el == 0 then count + 1 else count)
+            0
+            casel
+        in
+        if default_count > 1 then raise (Failure "Multiple default labels.");
         let sc =
           List.map
             (fun case ->

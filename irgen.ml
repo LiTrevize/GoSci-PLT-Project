@@ -21,11 +21,11 @@ module StringMap = Map.Make (String)
   Continue: jump to Update block or Condition block of the outmost loop
   Fallthrough: jump to next switch/match label 
 *)
-type control_target = {
-  break_target: Llvm.llbasicblock option;
-  continue_target: Llvm.llbasicblock option;
-  fall_target: Llvm.llbasicblock option;
-}
+type control_target =
+  { break_target : Llvm.llbasicblock option
+  ; continue_target : Llvm.llbasicblock option
+  ; fall_target : Llvm.llbasicblock option
+  }
 
 (* translate : Sast.program -> Llvm.module *)
 let translate ((sglobals, units, utypes, functions) : sprogram) =
@@ -441,7 +441,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       | SExprS e ->
         ignore (build_expr local_vars builder e);
         builder
-      | SLabelS _ -> raise (Failure ("Label statement is not implemented"))
+      | SLabelS _ -> raise (Failure "Label statement is not implemented")
       | SReturnS es ->
         (* Fix: each funciton has exactly one return value *)
         ignore (L.build_ret (build_expr local_vars builder (List.hd es)) builder);
@@ -449,15 +449,15 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       | SIfS (opt, predicate, then_stmt, else_stmt_opt) ->
         (match opt with
         | None -> ()
-        | Some exp -> ignore (build_expr local_vars builder exp)
-        );
+        | Some exp -> ignore (build_expr local_vars builder exp));
         let bool_val = build_expr local_vars builder predicate in
         let then_bb = L.append_block context "then" the_function in
         ignore (build_stmt local_vars target (L.builder_at_end context then_bb) then_stmt);
         let else_bb = L.append_block context "else" the_function in
         (match else_stmt_opt with
         | Some else_stmt ->
-          ignore (build_stmt local_vars target (L.builder_at_end context else_bb) else_stmt)
+          ignore
+            (build_stmt local_vars target (L.builder_at_end context else_bb) else_stmt)
         | None -> ());
         let end_bb = L.append_block context "if_end" the_function in
         let build_br_end = L.build_br end_bb in
@@ -512,11 +512,15 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           let bool_val = build_expr local_vars cond_builder predicate in
           let loop_bb = L.append_block context "for_loop" the_function in
           let end_bb = L.append_block context "for_end" the_function in
-          let for_target = { 
-            break_target=Some end_bb; 
-            continue_target=Some cond_bb; 
-            fall_target=target.fall_target;} in
-          add_terminal (build_stmt local_vars for_target (L.builder_at_end context loop_bb) body) build_br_cond;
+          let for_target =
+            { break_target = Some end_bb
+            ; continue_target = Some cond_bb
+            ; fall_target = target.fall_target
+            }
+          in
+          add_terminal
+            (build_stmt local_vars for_target (L.builder_at_end context loop_bb) body)
+            build_br_cond;
           ignore (L.build_cond_br bool_val loop_bb end_bb cond_builder);
           L.builder_at_end context end_bb
         | SFClause (init_stmt, cond_expr, update_expr) ->
@@ -530,17 +534,21 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           let loop_bb = L.append_block context "for_loop" the_function in
           let update_bb = L.append_block context "for_update" the_function in
           let end_bb = L.append_block context "for_end" the_function in
-          let for_target = { 
-            break_target=Some end_bb; 
-            continue_target=Some update_bb; 
-            fall_target=target.fall_target;} in 
+          let for_target =
+            { break_target = Some end_bb
+            ; continue_target = Some update_bb
+            ; fall_target = target.fall_target
+            }
+          in
           (match cond_expr with
           | None -> ignore (L.build_br loop_bb cond_builder)
-          | Some expr -> 
+          | Some expr ->
             let bool_val = build_expr local_vars cond_builder expr in
             ignore (L.build_cond_br bool_val loop_bb end_bb cond_builder));
-          add_terminal (build_stmt local_vars for_target (L.builder_at_end context loop_bb) body) (L.build_br update_bb);
-          let update_builder =  L.builder_at_end context update_bb in
+          add_terminal
+            (build_stmt local_vars for_target (L.builder_at_end context loop_bb) body)
+            (L.build_br update_bb);
+          let update_builder = L.builder_at_end context update_bb in
           (match update_expr with
           | None -> ()
           | Some expr -> ignore (build_expr local_vars update_builder expr));
@@ -550,72 +558,117 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       (* loop control statement is guaranteed to be the last statement within a block *)
       | SLoopS loo ->
         (match loo with
-        | SBreakS b -> 
-          (match target.break_target with 
+        | SBreakS b ->
+          (match target.break_target with
           | None -> raise (Failure "Break Error")
-          | Some bb -> add_terminal builder (L.build_br bb); builder)
-        | SContinueS c -> 
-          match target.continue_target with 
+          | Some bb ->
+            add_terminal builder (L.build_br bb);
+            builder)
+        | SContinueS c ->
+          (match target.continue_target with
           | None -> raise (Failure "Continue Error")
-          | Some bb -> add_terminal builder (L.build_br bb); builder )
-      | SFallS f -> 
-        (match target.fall_target with 
-          | None -> raise (Failure "Fallthrough Error")
-          | Some bb -> add_terminal builder (L.build_br bb); builder)
+          | Some bb ->
+            add_terminal builder (L.build_br bb);
+            builder))
+      | SFallS f ->
+        (match target.fall_target with
+        | None -> raise (Failure "Fallthrough Error")
+        | Some bb ->
+          add_terminal builder (L.build_br bb);
+          builder)
       (*
       switch(opt expr;opt expr) {
         case ...:
           ...
       }
          *)
-      | SSwitchS (opt, expr, casel) -> 
+      | SSwitchS (opt, expr, casel) ->
         (match opt with
         | None -> ()
-        | Some exp -> ignore (build_expr local_vars builder exp)
-        );
-        let case_value = 
-          (match expr with
+        | Some exp -> ignore (build_expr local_vars builder exp));
+        let case_value =
+          match expr with
           | None -> L.const_int i1_t 1
           | Some exp -> build_expr local_vars builder exp
-          ); in 
+        in
         let default_bb = L.append_block context "default" the_function in
         let end_bb = L.append_block context "switch_end" the_function in
         (* construct the jump table *)
-        let all_cases = List.fold_left (fun dests clause -> 
-          match clause with
-          | SCaseS (el, sl) ->
-            let switch_target = { 
-            break_target = Some end_bb; 
-            continue_target = target.continue_target; 
-            fall_target = 
-            if List.length dests == 0 
-              then Some end_bb
-              (*get the next block*)
-              else Some (snd (List.hd dests));} in 
-            (match el with 
-            | [] -> 
-              (*default case*)
-              ignore (List.map (fun stmt -> build_stmt local_vars switch_target (L.builder_at_end context default_bb) stmt) sl);
-              add_terminal (L.builder_at_end context default_bb) (L.build_br end_bb);
-              (L.undef i32_t, default_bb) :: dests
-            | _ -> 
-              (*case expr1, expr2... : 
+        let all_cases =
+          List.fold_left
+            (fun dests clause ->
+              match clause with
+              | SCaseS (el, sl) ->
+                let switch_target =
+                  { break_target = Some end_bb
+                  ; continue_target = target.continue_target
+                  ; fall_target =
+                      (if List.length dests == 0
+                      then Some end_bb (*get the next block*)
+                      else Some (snd (List.hd dests)))
+                  }
+                in
+                (match el with
+                | [] ->
+                  (*default case*)
+                  ignore
+                    (List.map
+                       (fun stmt ->
+                         build_stmt
+                           local_vars
+                           switch_target
+                           (L.builder_at_end context default_bb)
+                           stmt)
+                       sl);
+                  add_terminal (L.builder_at_end context default_bb) (L.build_br end_bb);
+                  (L.undef i32_t, default_bb) :: dests
+                | _ ->
+                  (*case expr1, expr2... : 
                  stmt list*)
-              let case_bb = L.append_block context "case" the_function in
-              ignore (List.map (fun stmt -> build_stmt local_vars switch_target (L.builder_at_end context case_bb) stmt) sl);
-              add_terminal (L.builder_at_end context case_bb) (L.build_br end_bb);
-              (*matchingn any expr in this case will jump to its block*)
-              let case_pairs = List.map (fun cexpr -> 
-                let cval = build_expr local_vars builder cexpr in 
-                  (cval, case_bb)) el in
-              case_pairs @ dests)) 
-          [] (List.rev casel) in
+                  let case_bb = L.append_block context "case" the_function in
+                  ignore
+                    (List.map
+                       (fun stmt ->
+                         build_stmt
+                           local_vars
+                           switch_target
+                           (L.builder_at_end context case_bb)
+                           stmt)
+                       sl);
+                  add_terminal (L.builder_at_end context case_bb) (L.build_br end_bb);
+                  (*matchingn any expr in this case will jump to its block*)
+                  let case_pairs =
+                    List.map
+                      (fun cexpr ->
+                        let cval = build_expr local_vars builder cexpr in
+                        cval, case_bb)
+                      el
+                  in
+                  case_pairs @ dests))
+            []
+            (List.rev casel)
+        in
         add_terminal (L.builder_at_end context default_bb) (L.build_br end_bb);
-        let default_count = List.fold_left (fun count case -> 
-          match case with 
-          | (_, b) -> if b == default_bb then count + 1 else count) 0 all_cases in 
-        let sw = L.build_switch case_value default_bb ((List.length all_cases)-default_count) builder in
-        ignore(List.map (fun dest -> if snd dest != default_bb then L.add_case sw (fst dest) (snd dest)) all_cases);
+        let default_count =
+          List.fold_left
+            (fun count case ->
+              match case with
+              | _, b -> if b == default_bb then count + 1 else count)
+            0
+            all_cases
+        in
+        let sw =
+          L.build_switch
+            case_value
+            default_bb
+            (List.length all_cases - default_count)
+            builder
+        in
+        ignore
+          (List.map
+             (fun dest ->
+               if snd dest != default_bb then L.add_case sw (fst dest) (snd dest))
+             all_cases);
         L.builder_at_end context end_bb
       | SMatchS (_, s, e, case_list) ->
         let (vt, _), e' = e in
@@ -680,9 +733,13 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       (* | _ -> raise (Failure "Statement Not Implemented") *)
     in
     (* Default break/continue/fallthrough target *)
-    let default_target = {break_target=None; continue_target=None; fall_target=None;} in
+    let default_target =
+      { break_target = None; continue_target = None; fall_target = None }
+    in
     (* Build the code for each statement in the function *)
-    let func_builder = build_stmt local_vars default_target builder (SBlock fdecl.sbody) in
+    let func_builder =
+      build_stmt local_vars default_target builder (SBlock fdecl.sbody)
+    in
     (* Add a return if the last block falls off the end *)
     add_terminal func_builder (L.build_ret (L.const_int i32_t 0))
   in
