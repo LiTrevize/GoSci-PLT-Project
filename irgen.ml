@@ -51,7 +51,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         | A.Char -> L.const_int i8_t 0
         | A.Bool -> L.const_int i1_t 0
         | A.Float -> L.const_float float_t 0.0
-        | A.Str -> L.const_stringz context ""
+        | A.Str -> L.const_pointer_null string_t
         | _ -> raise (Failure (A.string_of_typ t ^ " not supported as global variable"))
       in
       StringMap.add n (L.define_global n (init t) the_module) m
