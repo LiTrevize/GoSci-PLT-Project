@@ -412,11 +412,23 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
           builder
       | SIodop (e1, op) ->
         let (t, _), _ = e1
-        and e1' = build_expr local_vars builder e1
-        and one = build_expr local_vars builder ((Int, []), SIntLit 1) in
+        and e1' = build_expr local_vars builder e1 in
+        let one = L.const_int (ltype_of_typ A.Int) 1 in
         (match op with
-        | A.Inc when t = A.Int -> L.build_add e1' one "tmp" builder
-        | A.Dec when t = A.Int -> L.build_sub e1' one "tmp" builder
+        | A.Inc when t = A.Int ->
+          let e1'' = L.build_add e1' one "tmp" builder in
+          (match snd e1 with
+          | SId s ->
+            ignore (L.build_store e1'' (lookup local_vars s) builder);
+            e1''
+          | _ -> e1'')
+        | A.Dec when t = A.Int ->
+          let e1'' = L.build_sub e1' one "tmp" builder in
+          (match snd e1 with
+          | SId s ->
+            ignore (L.build_store e1'' (lookup local_vars s) builder);
+            e1''
+          | _ -> e1'')
         | _ -> raise (Failure "Illegal Increment/Decrement Operation"))
       | SCall ("print", [ e ]) ->
         L.build_call

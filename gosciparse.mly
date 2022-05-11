@@ -26,7 +26,8 @@ open Ast
 %start tokenseq
 %type <Ast.tokenseq> tokenseq
 
-%right ASSIGN INC DEC
+%right ASSIGN
+%right INC DEC
 %left OR
 %left AND
 %left EQ NEQ

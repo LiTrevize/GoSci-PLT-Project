@@ -1,7 +1,6 @@
 func main() int {
-    int a;
-    a=0;
-    a=a++;
+    int a = 0;
+    a++;
     print(a);
     return 0;
 }

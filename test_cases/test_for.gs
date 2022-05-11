@@ -9,7 +9,7 @@ func main() int{
 
     
     for(c<b){
-        c=c++;
+        c++;
         print(c);
     }
 
