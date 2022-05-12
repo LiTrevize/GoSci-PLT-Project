@@ -41,6 +41,9 @@ func main() int{
   float acc2 [km][s -2];
   Num number = 2.5;
   Person student;
+  int[12] arr1;
+  int[12][12] arr2;
+  Person[3] arr3;
   
   t = 2.9 * 5.8 ^ 2 / 1.0;
   student = Person{"superman", 9999};

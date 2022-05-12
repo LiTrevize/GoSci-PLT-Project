@@ -95,10 +95,7 @@ and ftype =
   | FClause of stmt option * expr option * expr option
   | RClause of string * expr
 
-(* int x [m][s -2]: name binding *)
-(* type bind = typ * string * unit_expr *)
-
-type bind = typ * string * unit_expr * expr option
+type bind = typ * int list * string * unit_expr * expr option
 
 (* func_def: ret_typ fname formals locals body *)
 type func_def =
@@ -114,8 +111,6 @@ type shapeList = int list
 type utype_def =
   | VarType of string * typ list
   | StructType of string * bind list
-  | TensorType of string * shapeList
-  | ArrType of string * shapeList
 
 (* program = (globals, units, vartypes, functions) *)
 type program = bind list * unit_def list * utype_def list * func_def list
@@ -284,8 +279,15 @@ and string_of_typ = function
   | UserType type_name -> type_name
 ;;
 
-let string_of_bind ((t, id, units, init_expr) : bind) =
+let rec string_of_shape (sh : int list) =
+  match sh with
+  | [] -> ""
+  | hd :: tl -> "[" ^ string_of_int hd ^ "]" ^ string_of_shape tl
+;;
+
+let string_of_bind ((t, sh, id, units, init_expr) : bind) =
   string_of_typ t
+  ^ string_of_shape sh
   ^ " "
   ^ id
   ^ " "
@@ -344,9 +346,6 @@ let string_of_utype (utype : utype_def) =
     ^ " {\n"
     ^ String.concat " " (List.map string_of_bind bind_list)
     ^ "\n}\n"
-  | TensorType (name, shape_list) ->
-    "tensorType" ^ string_of_shape shape_list ^ name ^ "\n"
-  | ArrType (name, shape_list) -> "arrType" ^ string_of_shape shape_list ^ name ^ "\n"
 ;;
 
 let string_of_program ((vars, units, utypes, funcs) : program) =

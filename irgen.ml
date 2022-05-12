@@ -30,7 +30,7 @@ type control_target =
 (* translate : Sast.program -> Llvm.module *)
 let translate ((sglobals, units, utypes, functions) : sprogram) =
   (* sast utility functions *)
-  let unitless_bind (t, v, u, _) = t, v in
+  let unitless_bind (t, _, v, u, _) = t, v in
   let unitless_bind_list (bs : sbind list) = List.map unitless_bind bs in
   let context = L.global_context () in
   (* Create the LLVM compilation module into which
@@ -45,7 +45,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
   and string_t = L.pointer_type (L.i8_type context) in
   (* Create a map of global variables after creating each *)
   let global_vars : L.llvalue StringMap.t =
-    let global_var m (t, n, u, _) =
+    let global_var m (t, _, n, u, _) =
       let init = function
         | A.Int -> L.const_int i32_t 0
         | A.Char -> L.const_int i8_t 0
@@ -113,7 +113,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
   let struct_field_map : string list StringMap.t =
     let add_field m = function
       | SStructType (name, sbinds) ->
-        let fields = List.map (fun (t, v, u, e) -> v) sbinds in
+        let fields = List.map (fun (t, sh, v, u, e) -> v) sbinds in
         StringMap.add name fields m
       | _ -> m
     in
@@ -248,11 +248,11 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
         L.const_named_struct struct_t fields
       | SFieldLit (v, f) ->
         let bind =
-          List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals)
+          List.find (fun (t, sh, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals)
         in
         let name =
           match bind with
-          | UserType name, _, _, _ -> name
+          | UserType name, _, _, _, _ -> name
           | _ -> raise (Failure (v ^ "is not a struct"))
         in
         let idx = get_field_idx name f in
@@ -262,8 +262,10 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       (* | SId s -> lookup local_vars s *)
       | SAssign (s, e) ->
         let (rt, _), _ = e in
-        let lt, _, _, _ =
-          List.find (fun (t, n, u, e) -> n = s) (sglobals @ fdecl.slocals @ fdecl.sformals)
+        let lt, _, _, _, _ =
+          List.find
+            (fun (t, sh, n, u, e) -> n = s)
+            (sglobals @ fdecl.slocals @ fdecl.sformals)
         in
         (* e' computes the e.addr *)
         let e' = build_expr local_vars builder e in
@@ -300,11 +302,11 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       | SAssignField (v, f, e) ->
         let e' = build_expr local_vars builder e in
         let bind =
-          List.find (fun (t, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals)
+          List.find (fun (t, sh, n, u, e) -> n = v) (fdecl.slocals @ fdecl.sformals)
         in
         let name =
           match bind with
-          | UserType name, _, _, _ -> name
+          | UserType name, _, _, _, _ -> name
           | _ -> raise (Failure (v ^ "is not a struct"))
         in
         let idx = get_field_idx name f in
@@ -680,11 +682,26 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
             (List.rev casel)
         in
         add_terminal (L.builder_at_end context default_bb) (L.build_br end_bb);
-        let default_count = List.fold_left (fun count case -> 
-          match case with 
-          | (_, b) -> if b == default_bb then count + 1 else count) 0 all_cases in 
-        let sw = L.build_switch case_value default_bb ((List.length all_cases)-default_count) builder in
-        ignore(List.map (fun dest -> if snd dest != default_bb then L.add_case sw (fst dest) (snd dest)) all_cases);
+        let default_count =
+          List.fold_left
+            (fun count case ->
+              match case with
+              | _, b -> if b == default_bb then count + 1 else count)
+            0
+            all_cases
+        in
+        let sw =
+          L.build_switch
+            case_value
+            default_bb
+            (List.length all_cases - default_count)
+            builder
+        in
+        ignore
+          (List.map
+             (fun dest ->
+               if snd dest != default_bb then L.add_case sw (fst dest) (snd dest))
+             all_cases);
         L.builder_at_end context end_bb
       | SMatchS (_, s, e, case_list) ->
         let (vt, _), e' = e in
@@ -749,7 +766,7 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
       (* | _ -> raise (Failure "Statement Not Implemented") *)
     in
     (* Build code for global variable init *)
-    let build_var_init builder (t, n, u, e_opt) =
+    let build_var_init builder (t, sh, n, u, e_opt) =
       match e_opt with
       | Some e ->
         let e_assign = fst e, SAssign (n, e) in

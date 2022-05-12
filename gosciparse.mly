@@ -57,10 +57,14 @@ ID:
   | UID {$1}
   | LID {$1}
 
+shape_list:
+  /* nothing */  { [] }
+  | LBRACK ILIT RBRACK shape_list { $2::$4 }
+
 /* int x */
 vdecl:
-  |typ LID unit_expr_opt  { ($1, $2, $3, None) }
-  |typ LID unit_expr_opt ASSIGN expr {($1, $2, $3, Some($5))}
+  |typ shape_list LID unit_expr_opt  { ($1, $2, $3, $4, None) }
+  |typ shape_list LID unit_expr_opt ASSIGN expr {($1, $2, $3, $4, Some($6))}
 
 typ:
     INT    { Int    }
@@ -95,9 +99,6 @@ type_list:
     typ  { [$1] }
   | typ VERBAR type_list  { $1 :: $3 }
 
-// shape_list:
-//   /* nothing */  { [] }
-//   | LBRACK ILIT RBRACK shape_list { $2::$4 }
 
 vtdecl:
     VARTYPE ID LBRACE type_list RBRACE  { VarType($2, $4) }

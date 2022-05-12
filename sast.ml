@@ -21,7 +21,7 @@ and sx =
   (* call *)
   | SCall of string * sexpr list
 
-type sbind = typ * string * unit_expr * sexpr option
+type sbind = typ * int list * string * unit_expr * sexpr option
 
 (* type ssimple_stmt = SExprS of sexpr *)
 (* | SIncS of sexpr * uop
@@ -104,8 +104,9 @@ let rec string_of_sexpr (((t, u), e) : sexpr) =
   ^ ")"
 ;;
 
-let string_of_sbind ((t, id, units, init_sexpr) : sbind) =
+let string_of_sbind ((t, sh, id, units, init_sexpr) : sbind) =
   string_of_typ t
+  ^ string_of_shape sh
   ^ " "
   ^ id
   ^ " "

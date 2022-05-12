@@ -22,14 +22,17 @@ type coef =
 
 let check ((globals, units, utypes, functions) : program) =
   (* Verify a list of bindings has no duplicate names *)
-  let check_binds (kind : string) (binds : (typ * string * unit_expr * expr option) list) =
+  let check_binds
+      (kind : string)
+      (binds : (typ * int list * string * unit_expr * expr option) list)
+    =
     let rec dups = function
       | [] -> ()
-      | (_, n1, _, _) :: (_, n2, _, _) :: _ when n1 = n2 ->
+      | (_, _, n1, _, _) :: (_, _, n2, _, _) :: _ when n1 = n2 ->
         raise (Failure ("duplicate " ^ kind ^ " " ^ n1))
       | _ :: t -> dups t
     in
-    dups (List.sort (fun (_, a, _, _) (_, b, _, _) -> compare a b) binds)
+    dups (List.sort (fun (_, _, a, _, _) (_, _, b, _, _) -> compare a b) binds)
   in
   (* Make sure no globals duplicate *)
   let _ = check_binds "global" globals in
@@ -37,7 +40,6 @@ let check ((globals, units, utypes, functions) : program) =
   let add_type tuple = function
     | VarType (name, type_list) -> StringMap.add name type_list (fst tuple), snd tuple
     | StructType (name, binds) -> fst tuple, StringMap.add name binds (snd tuple)
-    | _ -> tuple
   in
   let global_type_tuple =
     List.fold_left add_type (StringMap.empty, StringMap.empty) utypes
@@ -60,10 +62,10 @@ let check ((globals, units, utypes, functions) : program) =
     then raise (Failure ("Type name (" ^ type_name ^ ")" ^ " is not defiend!"))
   in
   let add_var m = function
-    | (UserType type_name as ty), name, uexpr, _ ->
+    | (UserType type_name as ty), sh, name, uexpr, _ ->
       check_usertyped_var type_name;
-      StringMap.add name (ty, uexpr) m
-    | ty, name, uexpr, _ -> StringMap.add name (ty, uexpr) m
+      StringMap.add name (ty, uexpr, sh) m
+    | ty, sh, name, uexpr, _ -> StringMap.add name (ty, uexpr, sh) m
   in
   (* global variables *)
   (* let global_vars = List.fold_left add_var StringMap.empty globals in *)
@@ -79,11 +81,14 @@ let check ((globals, units, utypes, functions) : program) =
   let add_unit m unt = StringMap.add (fst unt) (snd unt) m in
   let global_units = List.fold_left add_unit global_units units in
   let type_of_identifier s m =
-    try fst (StringMap.find s m) with
+    try
+      match StringMap.find s m with
+      | t, _, _ -> t
+    with
     | Not_found -> raise (Failure ("undeclared identifier " ^ s))
   in
   let is_correct_field_in_bind target = function
-    | _, src, _, _ when src = target -> true
+    | _, _, src, _, _ when src = target -> true
     | _ -> false
   in
   let bind_of_struct_field s f m =
@@ -96,7 +101,10 @@ let check ((globals, units, utypes, functions) : program) =
   in
   let struct_of_var v m =
     match
-      try fst (StringMap.find v m) with
+      try
+        match StringMap.find v m with
+        | t, _, _ -> t
+      with
       | Not_found -> raise (Failure ("undeclared identifier " ^ v))
     with
     | UserType s -> s
@@ -106,13 +114,13 @@ let check ((globals, units, utypes, functions) : program) =
     let s = struct_of_var var var_m in
     let b = bind_of_struct_field s f struct_m in
     match b with
-    | t, _, _, _ -> t
+    | t, _, _, _, _ -> t
   in
   let unit_of_var_field var f var_m struct_m =
     let s = struct_of_var var var_m in
     let b = bind_of_struct_field s f struct_m in
     match b with
-    | _, _, u, _ -> u
+    | _, _, _, u, _ -> u
   in
   (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
@@ -124,7 +132,10 @@ let check ((globals, units, utypes, functions) : program) =
     else raise (Failure err)
   in
   let unit_of_identifier s m =
-    try snd (StringMap.find s m) with
+    try
+      match StringMap.find s m with
+      | _, u, _ -> u
+    with
     | Not_found -> raise (Failure ("undeclared identifier " ^ s))
   in
   (* check if unit defined *)
@@ -263,7 +274,7 @@ let check ((globals, units, utypes, functions) : program) =
       "print"
       { rtyp = Int, []
       ; fname = "print"
-      ; formals = [ UserType "Any", "x", [], None ]
+      ; formals = [ UserType "Any", [], "x", [], None ]
       ; locals = []
       ; body = []
       }
@@ -290,7 +301,7 @@ let check ((globals, units, utypes, functions) : program) =
   in
   let _ = find_func "main" in
   (* Ensure "main" is defined *)
-  let rec check_expr symbols = function
+  let rec check_expr (symbols : (typ * unit_expr * int list) StringMap.t) = function
     | IntLit (l, u) -> (Int, check_unit_expr u), SIntLit l
     | BoolLit l -> (Bool, []), SBoolLit l
     | FloatLit (l, u) -> (Float, check_unit_expr u), SFloatLit l
@@ -310,7 +321,7 @@ let check ((globals, units, utypes, functions) : program) =
              ^ " expressions in "
              ^ string_of_expr slit))
       else (
-        let check_structlit (ft, _, fu, _) e =
+        let check_structlit (ft, _, _, fu, _) e =
           let (et, eu), e' = check_expr symbols e in
           let _, e' = check_expr symbols (convert_expr_by_unit e fu eu) in
           let eu = fu in
@@ -492,7 +503,7 @@ let check ((globals, units, utypes, functions) : program) =
              ^ " arguments in "
              ^ string_of_expr call))
       else (
-        let check_call (ft, _, fu, _) e =
+        let check_call (ft, _, _, fu, _) e =
           let (et, eu), e' = check_expr symbols e in
           let _, e' = check_expr symbols (convert_expr_by_unit e fu eu) in
           let eu = fu in
@@ -518,14 +529,14 @@ let check ((globals, units, utypes, functions) : program) =
        in (t,v,u,e')
      in *)
   let check_binds_init symbols (binds : bind list) =
-    let f (symbols, sbinds) ((t, v, u, e) : bind) =
+    let f (symbols, sbinds) ((t, sh, v, u, e) : bind) =
       let e' =
         match e with
         | Some ee -> Some (check_expr symbols ee)
         | None -> None
       in
-      let sbind = t, v, u, e' in
-      StringMap.add v (t, u) symbols, sbind :: sbinds
+      let sbind = t, sh, v, u, e' in
+      StringMap.add v (t, u, sh) symbols, sbind :: sbinds
     in
     let symbols, sbinds = List.fold_left f (symbols, []) binds in
     symbols, List.rev sbinds
@@ -536,7 +547,7 @@ let check ((globals, units, utypes, functions) : program) =
     check_binds "formal" func.formals;
     check_binds "local" func.locals;
     (* turn formals to sformals *)
-    let sformals = List.map (fun (t, v, u, _) -> t, v, u, None) func.formals in
+    let sformals = List.map (fun (t, sh, v, u, _) -> t, sh, v, u, None) func.formals in
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left add_var StringMap.empty (globals @ func.formals) in
     let symbols, slocals = check_binds_init symbols func.locals in
@@ -621,10 +632,15 @@ let check ((globals, units, utypes, functions) : program) =
         let s_ctrl =
           { can_break = true; can_continue = ctrl.can_continue; can_fall = true }
         in
-        let default_count = List.fold_left (fun count case -> 
-          match case with 
-          | CaseS (el, sl) -> if List.length el == 0 then count + 1 else count) 0 casel in 
-        if default_count > 1 then raise (Failure ("Multiple default labels."));
+        let default_count =
+          List.fold_left
+            (fun count case ->
+              match case with
+              | CaseS (el, sl) -> if List.length el == 0 then count + 1 else count)
+            0
+            casel
+        in
+        if default_count > 1 then raise (Failure "Multiple default labels.");
         let sc =
           List.map
             (fun case ->
@@ -674,12 +690,12 @@ let check ((globals, units, utypes, functions) : program) =
                 | MatchC (Some t, sl) ->
                   ignore (check_subtyp vt t);
                   let sl' =
-                    check_stmt_list (add_var symbols (t, var, ue, None)) c_ctrl sl
+                    check_stmt_list (add_var symbols (t, [], var, ue, None)) c_ctrl sl
                   in
                   SMatchC (Some t, sl')
                 | MatchC (None, sl) ->
                   let sl' =
-                    check_stmt_list (add_var symbols (vt, var, ue, None)) c_ctrl sl
+                    check_stmt_list (add_var symbols (vt, [], var, ue, None)) c_ctrl sl
                   in
                   SMatchC (None, sl'))
               matchl
@@ -758,14 +774,16 @@ let check ((globals, units, utypes, functions) : program) =
     | AUnit l -> fst unt, SAUnit l
     | CUnit (e, id) -> fst unt, SCUnit (check_num_expr e, id)
   in
-  let check_fields (binds : (typ * string * unit_expr * expr option) list) : sbind list =
+  let check_fields (binds : (typ * int list * string * unit_expr * expr option) list)
+      : sbind list
+    =
     let rec dups = function
       | [] -> ()
-      | (_, n1, _, _) :: (_, n2, _, _) :: _ when n1 = n2 ->
+      | (_, _, n1, _, _) :: (_, _, n2, _, _) :: _ when n1 = n2 ->
         raise (Failure ("duplicate field" ^ " " ^ n1))
       | _ :: t -> dups t
     in
-    let f ((t, v, u, e) : bind) : sbind =
+    let f ((t, sh, v, u, e) : bind) : sbind =
       let e' =
         match e with
         | Some ee ->
@@ -773,10 +791,10 @@ let check ((globals, units, utypes, functions) : program) =
           (* TODO *)
         | None -> None
       in
-      t, v, u, e'
+      t, sh, v, u, e'
     in
     let sbinds = List.map f binds in
-    dups (List.sort (fun (_, a, _, _) (_, b, _, _) -> compare a b) binds);
+    dups (List.sort (fun (_, _, a, _, _) (_, _, b, _, _) -> compare a b) binds);
     sbinds
   in
   let check_utype = function
@@ -784,8 +802,6 @@ let check ((globals, units, utypes, functions) : program) =
     | StructType (name, binds) ->
       let sbinds = check_fields binds in
       SStructType (name, sbinds)
-    | TensorType (name, shape_list) -> STensorType (name, shape_list)
-    | ArrType (name, shape_list) -> SArrType (name, shape_list)
   in
   ( sglobals
   , List.map check_unit_decl units
