@@ -1,11 +1,7 @@
 func main() int{
-    int a;
-    int b;
-    int c;
-
-    a=0;
-    b=5;
-    c=10;
+    int a = 0;
+    int b = 5;
+    int c = 10;
 
     for (a<b) {
         a = a + 1;

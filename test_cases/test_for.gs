@@ -1,12 +1,7 @@
 func main() int{
-    int a;
-    int b;
-    int c;
-
-    a=0;
-    b=10;
-    c=0;
-
+    int a = 0;
+    int b = 10;
+    int c = 0;
     
     for(c<b){
         c++;

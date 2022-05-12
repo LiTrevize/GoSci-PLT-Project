@@ -12,6 +12,18 @@ Install llvm package for OCaml:
 opam install llvm
 ```
 
+## Format Source Code
+Install Dependency
+```
+opam install ocamlformat
+```
+
+Format the source file and replace with corrected versions, detailed instruction can go to [Dune's manual](https://dune.readthedocs.io/en/stable/formatting.html#formatting-a-project).
+```
+dune build @fmt --auto-promote
+```
+
+
 ## Test the GoSci compiler
 ### Unit Test
 Install ounit2 package:
@@ -71,19 +83,15 @@ And `action` can be:
 -  `semant.ml`: turn an AST to an sAST
 -  `irgen.ml`: turn sAST to llvm module
 -  `main.ml`: top-level file to run the compiler
+
+### Test files
 -  `test.ml`: test cases for unit tests
+-  `run_unit_tests.sh`: shell script to run all unit tests
+-  `test_cases/*`: test cases for integration tests
+-  `run_integration_tests.sh`: shell script to run all integration tests
+-  `check.sh`: format the code and run all the tests
 
 ### Other files
 
-- `example.gs`: a sample GoSci source code
-
-## Format Source Code
-Install Dependency
-```
-opam install ocamlformat
-```
-
-Format the source file and replace with corrected versions, detailed instruction can go to [Dune's manual](https://dune.readthedocs.io/en/stable/formatting.html#formatting-a-project).
-```
-dune build @fmt --auto-promote
-```
+- `example.gs`: a sample GoSci code of all usage
+- `example_demo.gs`: a sample GoSci code of a physics simulation

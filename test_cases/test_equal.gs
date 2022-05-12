@@ -1,19 +1,10 @@
 func main() int {
-    int a;
-    int b;
-    int c;
-    float d;
-    float e;
-    float f;
-
-    a=1;
-    b=1;
-    c=2;
-
-    d=1.0;
-    e=1.0;
-    f=1.1;
-    
+    int a = 1;
+    int b = 1;
+    int c = 2;
+    float d = 1.0;
+    float e = 1.0;
+    float f = 1.1;
 
     print(a==b);
     print(a==c);

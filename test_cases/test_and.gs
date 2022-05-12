@@ -1,8 +1,6 @@
 func main() int {
-    bool a;
-    bool b;
-    a = true;
-    b = false;
+    bool a = true;
+    bool b = false;
     
     print(a&&b);
     print(a&&a);

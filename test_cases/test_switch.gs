@@ -1,8 +1,6 @@
 func main() int {
-    int a;
-    int b;
-    a = 0;
-    b = 1;
+    int a = 0;
+    int b = 1;
 
     for (; b < 10 ;b = b + 1) {
         switch(a = b + 2; a) {
