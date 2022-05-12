@@ -1,88 +1,27 @@
-/* GoSci code */
-int a;
-/* float vel [m][s -1]; */
+float g [m][s -2] = 9.8;
 
-unit U {}
-
-unit km {
-  1000 m
+struct Object {
+  float mass [kg];
+  float h [m];
+  float v [m][s -1];
+  float a [m][s -2];
 }
 
-vartype Num {
-  int | float
+/* Simulate the motion of an object suspended from a spring */
+func simulate(Object obj, float kSpring [kg][s -2], float dt [s]) Object {
+  float force [kg][m][s -2] = - obj.mass * g - obj.h * kSpring;
+  obj.a = force / obj.mass;
+  obj.v = obj.v + obj.a * dt;
+  obj.h = obj.h + obj.v * dt;
+  return obj;
 }
 
-struct Person {
-  string name;
-  int age;
-}
-
-func gcd(int a, int b) int {
-  for (a != b) {
-    if (b < a) {
-      a = a - b;
-    } else {
-      b = b - a;
-    }
-  }
-  return a;
-}
-
-func main() int{
-  int a;
-  float b;
-  char c;
-  string s; 
-  bool flag;
-  int x;
+func main() int {
   int i;
-  float t [s];
-  float acc [m][s -2];
-  /* Num number;
-  Person student; */
-  
-  a = 10;
-  b = 18.1;
-  x = 2 + 3;
-  x = 2 ^ 3;
-  t = -b;
-  t = 2.9 * 5.8 ^ 2 / 1.0;
-  a ++ ;
-
-  /* unit auto checking and conversion */
-  /* acc = vel / t;
-  t ^ 3;  /* [s 3] */
-  acc * vel;  /* [m 2][s -3] */
-  acc / acc;  /* [] */ */
-  
-  c = 'c';
-  s = "helloworld";
-  flag = (true && (!false)) || false;
-  !flag; 
-  
-  /* for (i = 0; i < a; i=i+1) {
-    print(i);
-  } */
-
-  /* switch (x+1;x) {
-    case 1, 2:
-      return x;
-    case 3:
-      break;
-    default:
-      return x - 1;
+  Object obj = Object{2.0, 5.0, 0.0, 0.0};
+  for (i=0;i<100;i++) {
+    obj = simulate(obj, 5.0, 0.1);
+    print(obj.h);
   }
-
-  match (v := c) {
-    case int:
-      return 1;
-    case float:
-      return 2;
-    default:
-      break;
-  } */
-
-  print(gcd(3,15));
-  print(gcd(a,x));
   return 0;
 }

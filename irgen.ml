@@ -680,11 +680,26 @@ let translate ((sglobals, units, utypes, functions) : sprogram) =
             (List.rev casel)
         in
         add_terminal (L.builder_at_end context default_bb) (L.build_br end_bb);
-        let default_count = List.fold_left (fun count case -> 
-          match case with 
-          | (_, b) -> if b == default_bb then count + 1 else count) 0 all_cases in 
-        let sw = L.build_switch case_value default_bb ((List.length all_cases)-default_count) builder in
-        ignore(List.map (fun dest -> if snd dest != default_bb then L.add_case sw (fst dest) (snd dest)) all_cases);
+        let default_count =
+          List.fold_left
+            (fun count case ->
+              match case with
+              | _, b -> if b == default_bb then count + 1 else count)
+            0
+            all_cases
+        in
+        let sw =
+          L.build_switch
+            case_value
+            default_bb
+            (List.length all_cases - default_count)
+            builder
+        in
+        ignore
+          (List.map
+             (fun dest ->
+               if snd dest != default_bb then L.add_case sw (fst dest) (snd dest))
+             all_cases);
         L.builder_at_end context end_bb
       | SMatchS (_, s, e, case_list) ->
         let (vt, _), e' = e in
